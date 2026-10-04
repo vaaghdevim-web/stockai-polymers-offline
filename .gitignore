@@ -98,3 +98,36 @@ crash.*.log
 
 # MQTT credentials
 **/mosquitto/passwd
+
+# ------------------------------------------------------------
+# Terraform plans / local backups
+# ------------------------------------------------------------
+*.tfplan
+tfplan
+**/*.backup-*
+**/*.before-*
+**/terraform.tfvars.backup-*
+
+# ------------------------------------------------------------
+# Terraform diagnostic/task-definition artifacts
+# ------------------------------------------------------------
+**/ecs-db-*.json
+**/taskdef-*.json
+**/container-definitions-*.json
+**/*-plan.txt
+
+# ------------------------------------------------------------
+# Load-test generated output
+# ------------------------------------------------------------
+**/k6-*.json
+**/k6-*.txt
+
+# ------------------------------------------------------------
+# Temporary build/debug output
+# ------------------------------------------------------------
+**/maven-build-error.txt
+
+# Terraform plan output
+plan.txt
+
+**/*.backup-*

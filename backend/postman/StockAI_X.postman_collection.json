@@ -1,7 +1,7 @@
-{
+﻿{
     "info":  {
                  "_postman_id":  "stockai-x-postman-collection-v25",
-                 "name":  "StockAI X ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Enterprise IMS \u0026 Polymer Manufacturing API",
+                 "name":  "StockAI X ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Enterprise IMS \u0026 Polymer Manufacturing API",
                  "description":  "Complete Postman API Collection for Sri Vidha Polymers (SVP) StockAI X Integrated Management System (IMS). Covers 3-Unit Manufacturing, Double-Entry Inventory Ledger, QC Laboratory, Inter-Unit Transfers, Procurement Alerts, IoT Telemetry, and MinIO/S3 Storage.",
                  "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
              },
@@ -27,7 +27,7 @@
                                                         "script":  {
                                                                        "exec":  [
                                                                                     "if (!pm.environment.get(\u0027admin_password\u0027)) {",
-                                                                                    "    pm.environment.set(\u0027admin_password\u0027, \u0027admin123\u0027);",
+                                                                                    "    throw new Error(\u0027admin_password must be configured in the Postman environment\u0027);",
                                                                                     "}"
                                                                                 ],
                                                                        "type":  "text/javascript"
@@ -280,7 +280,7 @@
                                                         "script":  {
                                                                        "exec":  [
                                                                                     "if (!pm.environment.get(\u0027admin_password\u0027)) {",
-                                                                                    "    pm.environment.set(\u0027admin_password\u0027, \u0027admin123\u0027);",
+                                                                                    "    throw new Error(\u0027admin_password must be configured in the Postman environment\u0027);",
                                                                                     "}"
                                                                                 ],
                                                                        "type":  "text/javascript"
@@ -1095,7 +1095,7 @@
                                                         "script":  {
                                                                        "exec":  [
                                                                                     "if (!pm.environment.get(\u0027admin_password\u0027)) {",
-                                                                                    "    pm.environment.set(\u0027admin_password\u0027, \u0027admin123\u0027);",
+                                                                                    "    throw new Error(\u0027admin_password must be configured in the Postman environment\u0027);",
                                                                                     "}"
                                                                                 ],
                                                                        "type":  "text/javascript"

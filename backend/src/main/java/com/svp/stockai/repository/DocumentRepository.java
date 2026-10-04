@@ -10,6 +10,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
     Optional<Document> findByDocumentIdAndActiveTrue(Long documentId);
 
+    Optional<Document> findByExternalIdAndActiveTrue(String externalId);
+
     List<Document> findByActiveTrueOrderByUploadedAtDesc();
 
     List<Document> findByDocumentTypeAndActiveTrueOrderByUploadedAtDesc(String documentType);

@@ -25,9 +25,11 @@ public class DeviceRegistryService {
 
     private final Map<String, DeviceCredential> registry = new ConcurrentHashMap<>();
 
-    @Value("${stockai.iot.default-seed-salt:SVP_STOCKAI_PER_DEVICE_SALT_2026}")
+    @Value("${IOT_DEVICE_SALT}")
     private String salt;
 
+    @Value("${IOT_DEVICE_KEY}")
+    private String ext01DeviceKey;
     @PostConstruct
     public void init() {
         // Pre-register standard plant industrial devices with individual unique credentials
@@ -37,7 +39,7 @@ public class DeviceRegistryService {
         };
 
         for (String devId : defaultDevices) {
-            String initialKey = "KEY-" + devId + "-EDGE-9874";
+            String initialKey = devId.equals("EXT-01") ? ext01DeviceKey : "KEY-" + devId + "-EDGE-9874";
             registerDevice(devId, initialKey, "Production Machine " + devId, DeviceStatus.ACTIVE);
         }
         log.info("Initialized IoT Device Registry with {} pre-registered machines.", defaultDevices.length);

@@ -7,7 +7,8 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "document", indexes = {
-    @Index(name = "idx_document_entity", columnList = "entity_type, entity_id")
+    @Index(name = "idx_document_entity", columnList = "entity_type, entity_id"),
+    @Index(name = "idx_document_external_id", columnList = "external_id")
 })
 @Getter
 @Setter
@@ -24,6 +25,9 @@ public class Document {
     @Column(name = "document_type", nullable = false, length = 50)
     private String documentType;
 
+    @Column(name = "external_id", unique = true, length = 50)
+    private String externalId;
+
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
@@ -32,6 +36,9 @@ public class Document {
 
     @Column(name = "mime_type", length = 150)
     private String mimeType;
+
+    @Column(name = "size_bytes")
+    private Long sizeBytes;
 
     @Column(name = "entity_type", nullable = false, length = 100)
     private String entityType;

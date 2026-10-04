@@ -7,6 +7,7 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,13 +22,22 @@ class PerDeviceAuthenticationTest {
     private DeviceRegistryService registryService;
     private DeviceAuthenticationFilter filter;
 
-    private static final String EXT_KEY = "KEY-EXT-01-EDGE-9874";
+    private static final String EXT_KEY = "test-only-ext01-device-key-for-unit-tests";
     private static final String LOOM_KEY = "KEY-LOOM-01-EDGE-9874";
 
     @BeforeEach
-    void setUp() {
+    void setUp()  throws Exception { 
         SecurityContextHolder.clearContext();
         registryService = new DeviceRegistryService();
+
+        Field saltField = DeviceRegistryService.class.getDeclaredField("salt");
+        saltField.setAccessible(true);
+        saltField.set(registryService, "test-only-iot-salt-for-unit-tests");
+
+        Field keyField = DeviceRegistryService.class.getDeclaredField("ext01DeviceKey");
+        keyField.setAccessible(true);
+        keyField.set(registryService, "test-only-ext01-device-key-for-unit-tests");
+
         registryService.init();
         filter = new DeviceAuthenticationFilter(registryService);
     }
@@ -191,3 +201,5 @@ class PerDeviceAuthenticationTest {
         assertEquals("ROLE_MACHINE", auth.getAuthorities().iterator().next().getAuthority());
     }
 }
+
+

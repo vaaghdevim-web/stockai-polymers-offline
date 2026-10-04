@@ -66,7 +66,7 @@ public class ComprehensiveRbacMatrixSecurityTest {
     private String supervisorToken;
     private String adminToken;
 
-    private static final String MACHINE_KEY = "KEY-EXT-01-EDGE-9874";
+    private static final String MACHINE_KEY = "test-only-ext01-device-key-for-unit-tests";
 
     @BeforeEach
     void setUp() {
@@ -291,3 +291,4 @@ public class ComprehensiveRbacMatrixSecurityTest {
                 .andExpect(status().isForbidden());
     }
 }
+

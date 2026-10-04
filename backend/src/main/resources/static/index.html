@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StockAI X — Enterprise IMS & API Gateway</title>
+    <title>StockAI X â€” Enterprise IMS & API Gateway</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -425,7 +425,7 @@
             <!-- Left Card: Postman Instructions -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">🚀 How to Run in Postman</h3>
+                    <h3 class="card-title">ðŸš€ How to Run in Postman</h3>
                 </div>
                 <ul class="step-list">
                     <li class="step-item">
@@ -466,7 +466,7 @@
             <!-- Right Card: Seeded Credentials -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">🔐 Seeded Factory Credentials</h3>
+                    <h3 class="card-title">ðŸ” Seeded Factory Credentials</h3>
                 </div>
                 <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
                     The local database is seeded with active factory accounts configured with BCrypt encryption:
@@ -553,7 +553,7 @@
                 </div>
 
                 <div style="margin-top: 1.5rem; background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 8px; padding: 1rem;">
-                    <h4 style="font-size: 0.9rem; color: #93c5fd; margin-bottom: 0.3rem;">💡 Quick Tip</h4>
+                    <h4 style="font-size: 0.9rem; color: #93c5fd; margin-bottom: 0.3rem;">ðŸ’¡ Quick Tip</h4>
                     <p style="font-size: 0.85rem; color: var(--text-muted);">
                         You can also test live API calls directly right here using the interactive console below!
                     </p>
@@ -564,7 +564,7 @@
         <!-- Live Browser API Playground -->
         <div class="card" style="margin-bottom: 2.5rem;">
             <div class="card-header">
-                <h3 class="card-title">⚡ Live Browser API Tester</h3>
+                <h3 class="card-title">âš¡ Live Browser API Tester</h3>
                 <span style="font-size: 0.8rem; color: var(--text-muted);">Real-time calls to http://localhost:8080</span>
             </div>
             <p style="font-size: 0.9rem; color: var(--text-muted);">
@@ -572,10 +572,10 @@
             </p>
 
             <div class="btn-group">
-                <button class="btn" onclick="testLogin()">🔑 1. Test Login (admin)</button>
-                <button class="btn btn-secondary" onclick="testRawMaterials()">📦 2. Fetch Raw Materials</button>
-                <button class="btn btn-secondary" onclick="testReorderCheck()">🔄 3. Run Procurement Check</button>
-                <button class="btn btn-secondary" onclick="clearConsole()">🧹 Clear</button>
+                <button class="btn" onclick="testLogin()">ðŸ”‘ 1. Test Login (admin)</button>
+                <button class="btn btn-secondary" onclick="testRawMaterials()">ðŸ“¦ 2. Fetch Raw Materials</button>
+                <button class="btn btn-secondary" onclick="testReorderCheck()">ðŸ”„ 3. Run Procurement Check</button>
+                <button class="btn btn-secondary" onclick="clearConsole()">ðŸ§¹ Clear</button>
             </div>
 
             <div id="consoleOutput" class="console-output">// Ready. Click "Test Login (admin)" to authenticate live against localhost:8080...</div>
@@ -601,23 +601,23 @@
                 const res = await fetch('/api/v1/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usernameOrEmail: 'admin', password: 'admin123' })
+                    body: JSON.stringify({ usernameOrEmail: 'admin', password: window.prompt('Enter admin password:') || '' })
                 });
                 const data = await res.json();
                 if (res.ok) {
                     cachedToken = data.token;
-                    log('✅ LOGIN SUCCESS (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2) + '\n\nToken cached for subsequent requests!');
+                    log('âœ… LOGIN SUCCESS (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2) + '\n\nToken cached for subsequent requests!');
                 } else {
-                    log('❌ LOGIN FAILED (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2));
+                    log('âŒ LOGIN FAILED (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2));
                 }
             } catch (err) {
-                log('❌ NETWORK ERROR: ' + err.message);
+                log('âŒ NETWORK ERROR: ' + err.message);
             }
         }
 
         async function testRawMaterials() {
             if (!cachedToken) {
-                log('⚠️ Please click "Test Login (admin)" first to obtain a JWT Bearer token!');
+                log('âš ï¸ Please click "Test Login (admin)" first to obtain a JWT Bearer token!');
                 return;
             }
             log('Sending GET /api/v1/inventory/raw-materials with Bearer token ...');
@@ -626,15 +626,15 @@
                     headers: { 'Authorization': 'Bearer ' + cachedToken }
                 });
                 const data = await res.json();
-                log('✅ RAW MATERIALS (HTTP ' + res.status + ' - ' + data.length + ' items found):\n\n' + JSON.stringify(data, null, 2));
+                log('âœ… RAW MATERIALS (HTTP ' + res.status + ' - ' + data.length + ' items found):\n\n' + JSON.stringify(data, null, 2));
             } catch (err) {
-                log('❌ ERROR: ' + err.message);
+                log('âŒ ERROR: ' + err.message);
             }
         }
 
         async function testReorderCheck() {
             if (!cachedToken) {
-                log('⚠️ Please click "Test Login (admin)" first to obtain a JWT Bearer token!');
+                log('âš ï¸ Please click "Test Login (admin)" first to obtain a JWT Bearer token!');
                 return;
             }
             log('Sending POST /api/v1/procurement/reorder-check with Bearer token ...');
@@ -644,9 +644,9 @@
                     headers: { 'Authorization': 'Bearer ' + cachedToken }
                 });
                 const data = await res.json();
-                log('✅ REORDER SCAN RESULT (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2));
+                log('âœ… REORDER SCAN RESULT (HTTP ' + res.status + '):\n\n' + JSON.stringify(data, null, 2));
             } catch (err) {
-                log('❌ ERROR: ' + err.message);
+                log('âŒ ERROR: ' + err.message);
             }
         }
 
@@ -656,3 +656,4 @@
     </script>
 </body>
 </html>
+

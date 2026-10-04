@@ -1,4 +1,4 @@
-# SVP StockAI — Complete Security, QA & Production-Readiness Remediation Report
+﻿# SVP StockAI â€” Complete Security, QA & Production-Readiness Remediation Report
 
 **Project**: SVP StockAI (PP Woven Bag Manufacturing IMS)  
 **Audit Reference**: Complete QA, Security & Production Readiness Audit (15 Sept 2026)  
@@ -19,7 +19,7 @@ An exhaustive, implementation-level security and quality engineering remediation
                                     AUDIT REMEDIATION SCORECARD
 =========================================================================================================
 Category                          Pre-Audit Status       Post-Remediation Status   Test Evidence
-─────────────────────────────────────────────────────────────────────────────────────────────────────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 1. Secrets & Credentials          FAIL (Hardcoded)       FIXED (Fail-Closed)       ProductionSecurityValidator
 2. Admin MFA & IAM                FAIL (Optional)        FIXED (Mandatory TOTP)    AdminMfaEnforcementTest (5/5)
 3. IoT Device Authentication      FAIL (Shared Key)      FIXED (Per-Device Hashed) PerDeviceAuthTest (9/9)
@@ -30,7 +30,7 @@ Category                          Pre-Audit Status       Post-Remediation Status
 8. Infrastructure (K8s / Nginx)   FAIL (emptyDir/No TLS) FIXED (PVC + TLS + Rate)  pvc.yaml, nginx.conf
 9. Postman / Newman Regression    0 Assertions           FIXED (62 Assertions)     31/31 Requests (0 Failures)
 10. Java/Maven Test Suite         BLOCKED (Unrunnable)   FIXED (249 Passing)       BUILD SUCCESS (0 Failures)
-─────────────────────────────────────────────────────────────────────────────────────────────────────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 OVERALL RELEASE VERDICT:          HOLD FOR PRODUCTION    --> APPROVED FOR PRODUCTION
 =========================================================================================================
 ```
@@ -83,7 +83,7 @@ OVERALL RELEASE VERDICT:          HOLD FOR PRODUCTION    --> APPROVED FOR PRODUC
 ## 3. Cryptographically Bound IoT Device Authentication
 
 ### Findings Resolved
-- **Critical & High Finding**: A single global device key (`STOCKAI-EDGE-DEVICE-KEY-2026`) was shared across all edge gateways and machines. Compromising one device compromised the entire network, and requests could escalate privileges to `ROLE_OPERATOR`.
+- **Critical & High Finding**: A single global device key (`<REDACTED_GLOBAL_DEVICE_KEY>`) was shared across all edge gateways and machines. Compromising one device compromised the entire network, and requests could escalate privileges to `ROLE_OPERATOR`.
 
 ### Implementation Fixes
 1. **Device Registry & Lifecycle Management**:
@@ -235,18 +235,18 @@ OVERALL RELEASE VERDICT:          HOLD FOR PRODUCTION    --> APPROVED FOR PRODUC
 ## 11. Summary of Files Changed & Created
 
 ### New Security & Quality Components Added (12 Files)
-1. `src/main/java/com/svp/stockai/security/DeviceRegistryService.java` — Per-device cryptographic key management.
-2. `src/main/java/com/svp/stockai/security/DeviceCredential.java` — Device credential model.
-3. `src/main/java/com/svp/stockai/security/DeviceStatus.java` — Device lifecycle enum (`ACTIVE`, `DISABLED`, `REVOKED`).
-4. `src/main/java/com/svp/stockai/security/StreamTicketService.java` — Single-use 30s telemetry tickets.
-5. `src/main/resources/db/mfa_user_secret_migration.sql` — Schema migration for per-user MFA.
-6. `src/test/java/com/svp/stockai/security/AdminMfaEnforcementIntegrationTest.java` — 5 filter-chain MFA tests.
-7. `src/test/java/com/svp/stockai/security/PerDeviceAuthenticationTest.java` — 9 per-device IoT auth tests.
-8. `src/test/java/com/svp/stockai/security/StreamTicketSecurityTest.java` — 6 streaming ticket security tests.
-9. `src/test/java/com/svp/stockai/security/ComprehensiveRbacMatrixSecurityTest.java` — 15 RBAC matrix tests.
-10. `src/test/java/com/svp/stockai/security/DocumentControllerSecurityTest.java` — 3 IDOR download tests.
-11. `k8s/pvc.yaml` — Kubernetes PersistentVolumeClaim manifest.
-12. `docs/PRODUCTION_READINESS_REVIEW.md` — Full 9-dimension PRR documentation.
+1. `src/main/java/com/svp/stockai/security/DeviceRegistryService.java` â€” Per-device cryptographic key management.
+2. `src/main/java/com/svp/stockai/security/DeviceCredential.java` â€” Device credential model.
+3. `src/main/java/com/svp/stockai/security/DeviceStatus.java` â€” Device lifecycle enum (`ACTIVE`, `DISABLED`, `REVOKED`).
+4. `src/main/java/com/svp/stockai/security/StreamTicketService.java` â€” Single-use 30s telemetry tickets.
+5. `src/main/resources/db/mfa_user_secret_migration.sql` â€” Schema migration for per-user MFA.
+6. `src/test/java/com/svp/stockai/security/AdminMfaEnforcementIntegrationTest.java` â€” 5 filter-chain MFA tests.
+7. `src/test/java/com/svp/stockai/security/PerDeviceAuthenticationTest.java` â€” 9 per-device IoT auth tests.
+8. `src/test/java/com/svp/stockai/security/StreamTicketSecurityTest.java` â€” 6 streaming ticket security tests.
+9. `src/test/java/com/svp/stockai/security/ComprehensiveRbacMatrixSecurityTest.java` â€” 15 RBAC matrix tests.
+10. `src/test/java/com/svp/stockai/security/DocumentControllerSecurityTest.java` â€” 3 IDOR download tests.
+11. `k8s/pvc.yaml` â€” Kubernetes PersistentVolumeClaim manifest.
+12. `docs/PRODUCTION_READINESS_REVIEW.md` â€” Full 9-dimension PRR documentation.
 
 ### Core Files Hardened (18 Files)
 - `src/main/resources/application.properties` & `application-local.properties`
@@ -270,3 +270,4 @@ OVERALL RELEASE VERDICT:          HOLD FOR PRODUCTION    --> APPROVED FOR PRODUC
 > **OVERALL REMEDIATION VERDICT: APPROVED FOR PRODUCTION (STATUS: FIXED)**
 > 
 > All critical security gaps, authorization defects, and test coverage deficiencies identified in the audit report have been fully resolved and verified. The codebase is hardened, regression-tested (249/249 tests passing), and ready for live production deployment.
+

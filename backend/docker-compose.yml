@@ -1,4 +1,4 @@
-﻿services:
+services:
 
   nginx-gateway:
     image: nginx:1.25-alpine
@@ -40,6 +40,7 @@
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET environment variable must be specified}
       MFA_ENFORCED: ${MFA_ENFORCED:-true}
       IOT_DEVICE_SALT: ${IOT_DEVICE_SALT:?IOT_DEVICE_SALT environment variable must be specified}
+      IOT_DEVICE_KEY: ${IOT_DEVICE_KEY:?IOT_DEVICE_KEY environment variable must be specified}
 
       KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
