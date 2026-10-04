@@ -81,7 +81,7 @@ variable "redis_endpoint" {
 variable "backend_image_digest" {
   description = "Immutable ECR backend image digest"
   type        = string
-  default     = "sha256:80298cec7eefff822f42aef872d42989f1b25f15fce0602d323b97c9f69d8176"
+  default     = "sha256:c56bd4afdee9e271580e328532fe997fe073fbef581dc9137ab1b126586c2941"
 }
 
 variable "cors_allowed_origins" {
@@ -94,5 +94,6 @@ variable "acm_certificate_arn" {
   type        = string
   description = "ARN of the ACM certificate for the ALB HTTPS listener (same region as the ALB)"
 }
+
 
 

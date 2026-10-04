@@ -1,8 +1,25 @@
 ﻿# ============================================================
-# StockAI Polymers - Production Backend Image
+# Frontend build
 # ============================================================
 
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+
+RUN npm run lint
+RUN npm run build
+
+
+# ============================================================
+# Backend build
+# ============================================================
+
+FROM eclipse-temurin:21-jdk-alpine AS backend-builder
 
 WORKDIR /workspace
 
@@ -17,11 +34,14 @@ RUN ./mvnw dependency:go-offline -B || true
 
 COPY backend/src src
 
+# Copy the production React build into Spring Boot static resources.
+COPY --from=frontend-builder /frontend/dist /workspace/src/main/resources/static
+
 RUN ./mvnw clean package -DskipTests
 
 
 # ============================================================
-# Runtime image
+# Production runtime
 # ============================================================
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
@@ -34,7 +54,7 @@ RUN addgroup -g 10001 -S stockai && \
 RUN mkdir -p /app/storage /app/logs && \
     chown -R stockai:stockai /app
 
-COPY --from=builder --chown=stockai:stockai \
+COPY --from=backend-builder --chown=stockai:stockai \
     /workspace/target/stockai-*.jar /app/app.jar
 
 ENV PORT=8080 \
