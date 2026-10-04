@@ -131,3 +131,6 @@ tfplan
 plan.txt
 
 **/*.backup-*
+
+# Java compiled artifacts
+**/*.class
