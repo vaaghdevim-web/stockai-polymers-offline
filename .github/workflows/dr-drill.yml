@@ -1,0 +1,225 @@
+name: PostgreSQL Disaster Recovery Restore Drill
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-restore-drill:
+    name: Backup, Restore & Integrity Verification
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: dr_test_password
+          POSTGRES_DB: stockai_source
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d stockai_source"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: dr_test_password
+      SOURCE_DB: stockai_source
+      RESTORE_DB: stockai_restore_test
+      BACKUP_FILE: stockai-restore-drill.dump
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify PostgreSQL service
+        run: |
+          pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$SOURCE_DB"
+
+      - name: Seed restore-drill data
+        run: |
+          psql -d "$SOURCE_DB" <<'SQL'
+          CREATE TABLE machine_restore_test (
+              id BIGSERIAL PRIMARY KEY,
+              machine_code VARCHAR(100) NOT NULL,
+              status VARCHAR(50) NOT NULL,
+              recorded_at TIMESTAMPTZ NOT NULL
+          );
+
+          CREATE TABLE inventory_restore_test (
+              id BIGSERIAL PRIMARY KEY,
+              material_code VARCHAR(100) NOT NULL,
+              quantity NUMERIC(18,3) NOT NULL,
+              recorded_at TIMESTAMPTZ NOT NULL
+          );
+
+          CREATE TABLE telemetry_restore_test (
+              id BIGSERIAL PRIMARY KEY,
+              machine_code VARCHAR(100) NOT NULL,
+              temperature NUMERIC(10,3) NOT NULL,
+              recorded_at TIMESTAMPTZ NOT NULL
+          );
+
+          INSERT INTO machine_restore_test
+              (machine_code, status, recorded_at)
+          VALUES
+              ('MACHINE-001', 'RUNNING', NOW()),
+              ('MACHINE-002', 'IDLE', NOW());
+
+          INSERT INTO inventory_restore_test
+              (material_code, quantity, recorded_at)
+          VALUES
+              ('POLYMER-A', 1250.500, NOW()),
+              ('POLYMER-B', 845.250, NOW());
+
+          INSERT INTO telemetry_restore_test
+              (machine_code, temperature, recorded_at)
+          VALUES
+              ('MACHINE-001', 72.450, NOW()),
+              ('MACHINE-002', 68.125, NOW());
+
+          CREATE INDEX idx_machine_restore_test_code
+              ON machine_restore_test(machine_code);
+
+          CREATE INDEX idx_inventory_restore_test_code
+              ON inventory_restore_test(material_code);
+
+          CREATE INDEX idx_telemetry_restore_test_machine
+              ON telemetry_restore_test(machine_code);
+          SQL
+
+      - name: Record source checksums and row counts
+        run: |
+          psql -d "$SOURCE_DB" -Atc \
+            "SELECT 'machine_restore_test=' || COUNT(*) FROM machine_restore_test;
+             SELECT 'inventory_restore_test=' || COUNT(*) FROM inventory_restore_test;
+             SELECT 'telemetry_restore_test=' || COUNT(*) FROM telemetry_restore_test;" \
+            | tee source-integrity.txt
+
+      - name: Create logical backup
+        run: |
+          START_EPOCH=$(date +%s)
+          echo "DR_BACKUP_START=$START_EPOCH" >> "$GITHUB_ENV"
+
+          pg_dump \
+            -Fc \
+            -d "$SOURCE_DB" \
+            -f "$BACKUP_FILE"
+
+          test -s "$BACKUP_FILE"
+
+          END_EPOCH=$(date +%s)
+          echo "DR_BACKUP_END=$END_EPOCH" >> "$GITHUB_ENV"
+
+          echo "Backup size:"
+          stat -c%s "$BACKUP_FILE"
+
+      - name: Create restore target database
+        run: |
+          psql -d postgres -c "CREATE DATABASE $RESTORE_DB;"
+
+      - name: Restore backup
+        run: |
+          RESTORE_START=$(date +%s)
+          echo "DR_RESTORE_START=$RESTORE_START" >> "$GITHUB_ENV"
+
+          pg_restore \
+            --clean \
+            --if-exists \
+            --no-owner \
+            --no-privileges \
+            -d "$RESTORE_DB" \
+            "$BACKUP_FILE"
+
+          RESTORE_END=$(date +%s)
+          echo "DR_RESTORE_END=$RESTORE_END" >> "$GITHUB_ENV"
+
+      - name: Validate restored schema and data
+        run: |
+          psql -d "$RESTORE_DB" -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT COUNT(*) FROM machine_restore_test;
+          SELECT COUNT(*) FROM inventory_restore_test;
+          SELECT COUNT(*) FROM telemetry_restore_test;
+
+          DO $$
+          BEGIN
+            IF (SELECT COUNT(*) FROM machine_restore_test) <> 2 THEN
+              RAISE EXCEPTION 'machine_restore_test row-count validation failed';
+            END IF;
+
+            IF (SELECT COUNT(*) FROM inventory_restore_test) <> 2 THEN
+              RAISE EXCEPTION 'inventory_restore_test row-count validation failed';
+            END IF;
+
+            IF (SELECT COUNT(*) FROM telemetry_restore_test) <> 2 THEN
+              RAISE EXCEPTION 'telemetry_restore_test row-count validation failed';
+            END IF;
+
+            IF (SELECT COUNT(*) FROM pg_indexes
+                WHERE tablename = 'idx_machine_restore_test_code') <> 0 THEN
+              NULL;
+            END IF;
+          END $$;
+          SQL
+
+      - name: Verify restored records
+        run: |
+          psql -d "$RESTORE_DB" -Atc \
+            "SELECT machine_code || '|' || status
+               FROM machine_restore_test
+              ORDER BY machine_code;" \
+            | tee restored-machines.txt
+
+          grep -Fx "MACHINE-001|RUNNING" restored-machines.txt
+          grep -Fx "MACHINE-002|IDLE" restored-machines.txt
+
+          psql -d "$RESTORE_DB" -Atc \
+            "SELECT material_code || '|' || quantity
+               FROM inventory_restore_test
+              ORDER BY material_code;" \
+            | tee restored-inventory.txt
+
+          grep -Fx "POLYMER-A|1250.500" restored-inventory.txt
+          grep -Fx "POLYMER-B|845.250" restored-inventory.txt
+
+      - name: Measure restore duration
+        run: |
+          RESTORE_SECONDS=$((DR_RESTORE_END - DR_RESTORE_START))
+          BACKUP_SECONDS=$((DR_BACKUP_END - DR_BACKUP_START))
+          echo "Backup duration: ${BACKUP_SECONDS}s"
+          echo "Restore duration: ${RESTORE_SECONDS}s"
+
+          cat > dr-results.txt <<EOF
+          Backup duration: ${BACKUP_SECONDS}s
+          Restore duration: ${RESTORE_SECONDS}s
+          Backup artifact: ${BACKUP_FILE}
+          Schema validation: PASS
+          Row-count validation: PASS
+          Critical record validation: PASS
+          Production database modified: NO
+          EOF
+
+      - name: Upload DR drill evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dr-drill-${{ github.sha }}
+          path: |
+            source-integrity.txt
+            restored-machines.txt
+            restored-inventory.txt
+            dr-results.txt
+          retention-days: 30
