@@ -1,10 +1,13 @@
-﻿import http from 'k6/http';
+import http from 'k6/http';
 import { check } from 'k6';
 import { Trend, Counter } from 'k6/metrics';
 
 const BASE_URL = __ENV.TARGET_URL || 'http://localhost:18080/api/v1';
 const USERNAME = __ENV.K6_USERNAME || 'operator01';
-const PASSWORD = __ENV.K6_PASSWORD || 'operator123';
+const PASSWORD = __ENV.K6_PASSWORD;
+if (!PASSWORD) {
+    throw new Error('K6_PASSWORD environment variable is required');
+}
 
 const telemetryReqDuration = new Trend('telemetry_req_duration_ms');
 const activeMachinesDuration = new Trend('active_machines_req_duration_ms');
@@ -209,4 +212,3 @@ function readActiveMachines(authHeaders) {
         }
     });
 }
-
