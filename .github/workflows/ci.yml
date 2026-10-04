@@ -1,4 +1,4 @@
-name: StockAI Enterprise CI
+﻿name: StockAI Enterprise CI
 
 on:
   push:
@@ -81,7 +81,7 @@ jobs:
         with:
           extra_args: --only-verified
 
-    dependency-scan:
+  dependency-scan:
     name: Dependency SCA & SBOM
     runs-on: ubuntu-latest
 
@@ -132,7 +132,9 @@ jobs:
         with:
           name: stockai-sbom-${{ github.sha }}
           path: artifacts/stockai-sbom.json
-          retention-days: 30 container-scan:
+          retention-days: 30
+
+  container-scan:
     name: Container Build & CVE Scan
     runs-on: ubuntu-latest
 
