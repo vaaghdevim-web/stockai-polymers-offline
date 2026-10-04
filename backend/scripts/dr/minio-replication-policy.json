@@ -1,0 +1,41 @@
+{
+  "Role": "arn:aws:iam::123456789012:role/StockAiS3ReplicationRole",
+  "Rules": [
+    {
+      "ID": "StockAiCrossRegionDocumentReplication",
+      "Status": "Enabled",
+      "Priority": 1,
+      "DeleteMarkerReplication": {
+        "Status": "Disabled"
+      },
+      "Filter": {
+        "Prefix": ""
+      },
+      "Destination": {
+        "Bucket": "arn:aws:s3:::svp-stockai-documents-dr-secondary",
+        "Account": "123456789012",
+        "StorageClass": "STANDARD",
+        "EncryptionConfiguration": {
+          "ReplicaKmsKeyID": "arn:aws:kms:ap-south-1:123456789012:key/stockai-s3-dr-key"
+        },
+        "ReplicationTime": {
+          "Status": "Enabled",
+          "Time": {
+            "Minutes": 15
+          }
+        },
+        "Metrics": {
+          "Status": "Enabled",
+          "EventThreshold": {
+            "Minutes": 15
+          }
+        }
+      },
+      "SourceSelectionCriteria": {
+        "SseKmsEncryptedObjects": {
+          "Status": "Enabled"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+$kind: http-request
+name: '3.3 Get BOM Details by ID'
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/v1/factory/compounding/boms/{{bom_id}}'

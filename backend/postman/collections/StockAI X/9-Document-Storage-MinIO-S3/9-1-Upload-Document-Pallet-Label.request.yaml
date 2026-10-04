@@ -1,0 +1,14 @@
+$kind: http-request
+name: '9.1 Upload Document / Pallet Label'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/documents/upload'
+body:
+  type: formdata
+  content:
+    - key: file
+      type: file
+      src: ''
+    - key: category
+      type: text
+      value: PALLET_LABELS

@@ -1,0 +1,8 @@
+$kind: http-request
+name: '6.2 List Purchase Recommendations'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/procurement/recommendations'
+queryParams:
+  - key: status
+    value: New

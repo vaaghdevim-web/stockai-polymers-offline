@@ -1,0 +1,5 @@
+$kind: http-request
+name: '4.4 Get Inspections by Batch Reference'
+order: 4000
+method: GET
+url: '{{baseUrl}}/api/v1/qc/inspections/batch/material/{{batch_id}}'

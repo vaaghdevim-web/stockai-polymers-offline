@@ -1,0 +1,5 @@
+$kind: http-request
+name: '2.2 Get Available Batches (Strict FIFO)'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/inventory/raw-materials/{{material_id}}/batches'

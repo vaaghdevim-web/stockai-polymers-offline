@@ -1,0 +1,36 @@
+$kind: http-request
+name: '4.1 Record QC Inspection (MFI & Tensile Strength)'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/qc/inspections'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "inspectionType": "Incoming",
+      "materialBatchId": {{batch_id}},
+      "remarks": "Laboratory testing for Polymer Melt Flow Index and Moisture",
+      "items": [
+        {
+          "parameterName": "Melt Flow Index (MFI)",
+          "minimumValue": 2.800000,
+          "maximumValue": 3.400000,
+          "targetValue": 3.100000,
+          "observedValue": 3.150000,
+          "measurementUnit": "g/10min",
+          "isCritical": true
+        },
+        {
+          "parameterName": "Moisture Content",
+          "minimumValue": 0.000000,
+          "maximumValue": 0.050000,
+          "targetValue": 0.020000,
+          "observedValue": 0.030000,
+          "measurementUnit": "%",
+          "isCritical": false
+        }
+      ]
+    }

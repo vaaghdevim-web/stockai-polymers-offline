@@ -1,0 +1,44 @@
+$kind: http-request
+name: '3.1 Create Compounding BOM (85:11:3:1 Formula)'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/factory/compounding/boms'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "bomCode": "BOM-PP-STD-V1",
+      "version": "1.0",
+      "effectiveFrom": "2026-09-01",
+      "effectiveTo": "2027-12-31",
+      "targetBatchWeightKg": 1000.0000,
+      "items": [
+        {
+          "materialId": 1,
+          "percentage": 85.0000,
+          "targetQuantityKg": 850.0000,
+          "isRequired": true
+        },
+        {
+          "materialId": 2,
+          "percentage": 11.0000,
+          "targetQuantityKg": 110.0000,
+          "isRequired": true
+        },
+        {
+          "materialId": 3,
+          "percentage": 3.0000,
+          "targetQuantityKg": 30.0000,
+          "isRequired": true
+        },
+        {
+          "materialId": 4,
+          "percentage": 1.0000,
+          "targetQuantityKg": 10.0000,
+          "isRequired": true
+        }
+      ]
+    }

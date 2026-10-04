@@ -1,0 +1,8 @@
+$kind: http-request
+name: '5.4 List All Stock Transfers'
+order: 4000
+method: GET
+url: '{{baseUrl}}/api/v1/transfers'
+queryParams:
+  - key: status
+    value: Draft

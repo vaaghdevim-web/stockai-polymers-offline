@@ -1,0 +1,5 @@
+$kind: http-request
+name: '2.3 Get Total Available Stock'
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/v1/inventory/raw-materials/{{material_id}}/available-stock'

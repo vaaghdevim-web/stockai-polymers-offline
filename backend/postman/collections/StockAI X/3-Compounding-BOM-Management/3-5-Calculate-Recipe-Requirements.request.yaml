@@ -1,0 +1,8 @@
+$kind: http-request
+name: '3.5 Calculate Recipe Requirements'
+order: 5000
+method: GET
+url: '{{baseUrl}}/api/v1/factory/compounding/boms/{{bom_id}}/calculate-requirements'
+queryParams:
+  - key: batchWeightKg
+    value: '2500.0000'

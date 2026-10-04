@@ -1,0 +1,5 @@
+$kind: http-request
+name: '7.2 Get Latest Machine Telemetry'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/iot/telemetry/latest/{{machine_code}}'

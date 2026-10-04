@@ -1,0 +1,8 @@
+$kind: http-request
+name: '7.3 Live SSE Telemetry Event Stream'
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/v1/iot/telemetry/stream'
+headers:
+  - key: Accept
+    value: text/event-stream

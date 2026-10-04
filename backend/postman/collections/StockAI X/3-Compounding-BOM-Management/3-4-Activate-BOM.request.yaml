@@ -1,0 +1,5 @@
+$kind: http-request
+name: '3.4 Activate BOM'
+order: 4000
+method: PATCH
+url: '{{baseUrl}}/api/v1/factory/compounding/boms/{{bom_id}}/activate'

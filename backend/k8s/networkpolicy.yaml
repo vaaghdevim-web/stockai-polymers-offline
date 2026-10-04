@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: stockai-network-policy
+  namespace: stockai-prod
+  labels:
+    app.kubernetes.io/name: stockai-backend
+    environment: production
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: stockai-backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow incoming traffic only from the Ingress Controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    # Allow outbound DNS resolution
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow outbound traffic to Database, Redis, and Kafka in the cluster or VPC
+    - ports:
+        - protocol: TCP
+          port: 5432 # PostgreSQL
+        - protocol: TCP
+          port: 6379 # Redis
+        - protocol: TCP
+          port: 9092 # Kafka
+        - protocol: TCP
+          port: 9000 # MinIO

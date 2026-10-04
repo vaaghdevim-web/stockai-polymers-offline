@@ -1,0 +1,8 @@
+$kind: http-request
+name: '9.2 List Stored Documents'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/documents'
+queryParams:
+  - key: category
+    value: PALLET_LABELS

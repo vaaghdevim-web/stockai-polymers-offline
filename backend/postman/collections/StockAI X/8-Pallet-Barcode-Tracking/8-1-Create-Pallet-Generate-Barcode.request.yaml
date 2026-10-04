@@ -1,0 +1,23 @@
+$kind: http-request
+name: '8.1 Create Pallet & Generate Barcode'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/pallets'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "plantId": 1,
+      "locationBinId": 1,
+      "tareWeightKg": 25.0000,
+      "grossWeightKg": 1025.0000,
+      "items": [
+        {
+          "finishedBatchId": 1,
+          "quantity": 500.0000
+        }
+      ]
+    }

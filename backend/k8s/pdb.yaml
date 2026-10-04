@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: stockai-backend-pdb
+  namespace: stockai-prod
+  labels:
+    app.kubernetes.io/name: stockai-backend
+    app.kubernetes.io/part-of: stockai-enterprise
+    environment: production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: stockai-backend

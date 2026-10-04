@@ -1,0 +1,8 @@
+$kind: collection
+name: 'StockAI X — Enterprise IMS & Polymer Manufacturing API'
+description: 'Complete Postman API Collection for Sri Vidha Polymers (SVP) StockAI X Integrated Management System (IMS). Covers 3-Unit Manufacturing, Double-Entry Inventory Ledger, QC Laboratory, Inter-Unit Transfers, Procurement Alerts, IoT Telemetry, and MinIO/S3 Storage.'
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{jwt_token}}'

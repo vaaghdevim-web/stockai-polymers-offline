@@ -1,0 +1,31 @@
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: stockai-hourly-cluster-backup
+  namespace: velero
+spec:
+  # Run hourly backups to achieve near-zero Kubernetes configuration RPO
+  schedule: "0 * * * *"
+  template:
+    includedNamespaces:
+      - stockai-prod
+      - ingress-nginx
+      - cert-manager
+    includeClusterResources: true
+    snapshotVolumes: true
+    storageLocation: s3-dr-secondary-region
+    ttl: 720h0m0s # 30-day retention
+---
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: s3-dr-secondary-region
+  namespace: velero
+spec:
+  provider: aws
+  objectStorage:
+    bucket: svp-stockai-k8s-backups-dr
+    prefix: cluster-backups
+  config:
+    region: ap-south-1
+    s3ForcePathStyle: "true"

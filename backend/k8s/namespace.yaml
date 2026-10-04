@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stockai-prod
+  labels:
+    app.kubernetes.io/name: stockai
+    app.kubernetes.io/part-of: stockai-enterprise
+    environment: production

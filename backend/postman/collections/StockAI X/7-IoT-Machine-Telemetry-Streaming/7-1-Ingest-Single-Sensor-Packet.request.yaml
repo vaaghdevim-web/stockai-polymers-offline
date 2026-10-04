@@ -1,0 +1,25 @@
+$kind: http-request
+name: '7.1 Ingest Single Sensor Packet'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/iot/telemetry/packet'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "machineCode": "{{machine_code}}",
+      "packetTimestamp": "2026-09-08T14:30:00Z",
+      "barrelZone1Temp": 225.5,
+      "barrelZone2Temp": 230.0,
+      "barrelZone3Temp": 232.0,
+      "dieTemperature": 240.0,
+      "meltPressureBar": 145.2,
+      "screwSpeedRpm": 82.0,
+      "motorCurrentAmps": 42.5,
+      "motorVibrationMmS": 2.1,
+      "ambientTemperature": 32.0,
+      "machineStatus": "RUNNING"
+    }

@@ -1,0 +1,25 @@
+$kind: http-request
+name: '5.1 Create Digital Transfer Note (Draft)'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/transfers'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "fromWarehouseId": 1,
+      "toWarehouseId": 2,
+      "transferDate": "2026-09-08",
+      "autoComplete": false,
+      "items": [
+        {
+          "materialBatchId": {{batch_id}},
+          "fromBinId": 1,
+          "toBinId": 2,
+          "quantity": 500.0000
+        }
+      ]
+    }

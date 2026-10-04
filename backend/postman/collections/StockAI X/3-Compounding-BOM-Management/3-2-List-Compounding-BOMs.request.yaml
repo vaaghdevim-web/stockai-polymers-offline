@@ -1,0 +1,8 @@
+$kind: http-request
+name: '3.2 List Compounding BOMs'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/factory/compounding/boms'
+queryParams:
+  - key: status
+    value: Active

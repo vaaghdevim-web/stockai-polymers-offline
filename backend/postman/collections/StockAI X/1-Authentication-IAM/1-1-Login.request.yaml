@@ -1,0 +1,32 @@
+$kind: http-request
+name: '1.1 Login (Admin / Supervisor / Operator)'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/auth/login'
+auth:
+  type: noauth
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "usernameOrEmail": "{{admin_username}}",
+      "password": "{{admin_password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      if (pm.response.code === 200) {
+          var data = pm.response.json();
+          if (data.token) {
+              pm.environment.set('jwt_token', data.token);
+              console.log('JWT access token set successfully');
+          }
+          if (data.refreshToken) {
+              pm.environment.set('refresh_token', data.refreshToken);
+              console.log('Refresh token set successfully');
+          }
+      }

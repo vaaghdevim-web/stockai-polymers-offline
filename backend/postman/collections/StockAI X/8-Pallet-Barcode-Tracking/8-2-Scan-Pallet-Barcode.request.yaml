@@ -1,0 +1,5 @@
+$kind: http-request
+name: '8.2 Scan Pallet Barcode'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/v1/pallets/PAL-2026-001'

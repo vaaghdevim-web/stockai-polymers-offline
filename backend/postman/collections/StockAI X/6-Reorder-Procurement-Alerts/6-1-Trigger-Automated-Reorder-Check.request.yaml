@@ -1,0 +1,5 @@
+$kind: http-request
+name: '6.1 Trigger Automated Reorder Check'
+order: 1000
+method: POST
+url: '{{baseUrl}}/api/v1/procurement/reorder-check'

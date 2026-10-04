@@ -1,0 +1,5 @@
+$kind: http-request
+name: '6.3 Approve Purchase Recommendation'
+order: 3000
+method: PATCH
+url: '{{baseUrl}}/api/v1/procurement/recommendations/{{recommendation_id}}/approve'

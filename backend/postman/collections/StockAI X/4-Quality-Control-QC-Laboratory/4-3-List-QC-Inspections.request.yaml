@@ -1,0 +1,8 @@
+$kind: http-request
+name: '4.3 List QC Inspections'
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/v1/qc/inspections'
+queryParams:
+  - key: status
+    value: Pass

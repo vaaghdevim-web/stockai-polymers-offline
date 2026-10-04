@@ -1,0 +1,5 @@
+$kind: http-request
+name: '4.5 List Product QC Specifications'
+order: 5000
+method: GET
+url: '{{baseUrl}}/api/v1/qc/specifications'

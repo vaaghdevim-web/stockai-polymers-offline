@@ -1,0 +1,134 @@
+package com.svp.stockai.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+
+@Service
+public class JwtService {
+
+    @Value("${jwt.secret:}")
+    private String secretKey;
+
+    @Value("${jwt.expiration-ms:3600000}")
+    private long expirationTime;
+
+    private SecretKey getSigningKey() {
+        if (secretKey == null || secretKey.trim().length() < 32) {
+            throw new IllegalStateException("JWT secret key must be at least 32 characters (256 bits) for HMAC-SHA256 security");
+        }
+        return Keys.hmacShaKeyFor(
+                secretKey.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    public String generateToken(
+            String username,
+            Long userId,
+            List<String> roles) {
+        return generateToken(username, userId, null, roles);
+    }
+
+    public String generateToken(
+            String username,
+            Long userId,
+            Long plantId,
+            List<String> roles) {
+
+        var builder = Jwts.builder()
+                .subject(username)
+                .claim("userId", userId)
+                .claim("roles", roles)
+                .claim("tokenType", "ACCESS")
+                .issuedAt(new Date())
+                .expiration(
+                        new Date(System.currentTimeMillis() + expirationTime)
+                );
+
+        if (plantId != null) {
+            builder.claim("plantId", plantId);
+        }
+
+        return builder.signWith(getSigningKey()).compact();
+    }
+
+    public String generateRefreshToken(String username, Long userId) {
+        return Jwts.builder()
+                .subject(username)
+                .claim("userId", userId)
+                .claim("tokenType", "REFRESH")
+                .issuedAt(new Date())
+                .expiration(
+                        new Date(System.currentTimeMillis() + (7L * 24 * 3600 * 1000)) // 7-day refresh token
+                )
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = extractClaims(token);
+            return "REFRESH".equals(claims.get("tokenType", String.class));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public Long extractPlantId(String token) {
+        try {
+            Number plantId = extractClaims(token).get("plantId", Number.class);
+            return plantId != null ? plantId.longValue() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public Claims extractClaims(String token) {
+
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaims(token).getSubject();
+    }
+
+    public Long extractUserId(String token) {
+        Number userId =
+                extractClaims(token).get("userId", Number.class);
+
+        return userId.longValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> extractRoles(String token) {
+        return extractClaims(token).get("roles", List.class);
+    }
+
+    public boolean isTokenExpired(String token) {
+
+        Date expiration =
+                extractClaims(token).getExpiration();
+
+        return expiration.before(new Date());
+    }
+
+    public boolean validateToken(String token) {
+
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}

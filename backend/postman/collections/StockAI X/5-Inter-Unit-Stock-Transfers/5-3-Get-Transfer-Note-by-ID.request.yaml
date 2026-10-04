@@ -1,0 +1,5 @@
+$kind: http-request
+name: '5.3 Get Transfer Note by ID'
+order: 3000
+method: GET
+url: '{{baseUrl}}/api/v1/transfers/{{transfer_id}}'

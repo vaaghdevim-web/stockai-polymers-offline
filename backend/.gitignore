@@ -1,0 +1,72 @@
+HELP.md
+target/
+.env
+.env.local
+*.log
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Secrets & Credentials ###
+*.pem
+*.key
+*.p12
+*.jks
+*.crt
+*.pfx
+secrets/
+credentials.json
+
+### Application Logs & Storage ###
+logs/
+*.log
+storage/
+/storage/documents/
+/tmp/
+
+### Test & Report Outputs ###
+postman/newman-results.json
+newman/
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.playwright-report/
+frontend/test-results/
+
+### OS & System Artifacts ###
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+
+# Local TLS certificates
+certs/
+certbot/
