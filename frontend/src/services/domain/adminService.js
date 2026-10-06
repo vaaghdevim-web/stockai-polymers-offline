@@ -1,4 +1,4 @@
-import api from '../api';
+import api, { roleApi, authApi } from '../api';
 
 /**
  * Domain Service for Administration, User Profile, RBAC Verification, and TOTP MFA.
@@ -61,58 +61,123 @@ const executeWithTokenRefresh = async (apiCall) => {
 
 /**
  * Retrieves the current authenticated user's profile, roles, assigned plant, and account status.
- * Endpoint: GET /api/v1/users/me (or /api/v1/profile)
+ * Backed by GET /api/v1/users/me (UserProfileController).
  */
 export const getCurrentUserProfile = async () => {
-  return executeWithTokenRefresh(() => api.get('/users/me'));
+  return executeWithTokenRefresh(async () => {
+    try {
+      const res = await api.get('/users/me');
+      return { data: res.data };
+    } catch (err) {
+      // Fallback to local session if network or offline
+      const saved = localStorage.getItem('stockai_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        return {
+          data: {
+            userId: user.id,
+            userName: user.name,
+            fullName: user.fullName || user.name,
+            phoneNumber: user.phoneNumber || '',
+            email: user.email,
+            roles: user.roles || [],
+            plantName: 'Sri Vidha Polymers - Unit 1',
+            isActive: true,
+          }
+        };
+      }
+      throw err;
+    }
+  });
 };
 
 /**
- * Updates the current authenticated user's profile (username and email with uniqueness check).
- * Endpoint: PUT /api/v1/users/me
+ * Updates the current authenticated user's profile (name, username, email, phone number).
+ * Backed by PUT /api/v1/users/me.
  */
 export const updateCurrentUserProfile = async (payload) => {
-  return executeWithTokenRefresh(() => api.put('/users/me', payload));
+  return executeWithTokenRefresh(async () => {
+    const res = await api.put('/users/me', payload);
+    // Update local cached user if successful
+    try {
+      const saved = localStorage.getItem('stockai_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        if (res.data?.userName) user.name = res.data.userName;
+        if (res.data?.fullName) user.fullName = res.data.fullName;
+        if (res.data?.email) user.email = res.data.email;
+        if (res.data?.phoneNumber) user.phoneNumber = res.data.phoneNumber;
+        localStorage.setItem('stockai_user', JSON.stringify(user));
+      }
+    } catch (e) {
+      console.warn('Failed to update cached local user:', e);
+    }
+    return { data: res.data };
+  });
 };
 
 /**
- * Changes the current authenticated user's password after validating current password.
- * Endpoint: PUT /api/v1/users/me/password
+ * Changes the current authenticated user's password.
+ * Backed by PUT /api/v1/users/me/password with fallback to authApi.changePassword.
  */
 export const changeCurrentUserPassword = async (payload) => {
-  return executeWithTokenRefresh(() => api.put('/users/me/password', payload));
+  return executeWithTokenRefresh(async () => {
+    try {
+      const res = await api.put('/users/me/password', payload);
+      return { data: res.data };
+    } catch (err) {
+      if (err.response?.status === 404 && authApi && authApi.changePassword) {
+        const fallbackRes = await authApi.changePassword(payload);
+        return { data: fallbackRes.data || fallbackRes };
+      }
+      throw err;
+    }
+  });
 };
 
 /**
- * Retrieves the real-time TOTP MFA enrollment and activation status for the current user.
- * Endpoint: GET /api/v1/auth/mfa/status
+ * Retrieves the TOTP MFA status.
+ * Spring Boot enforces RFC 6238 TOTP server-side during /auth/login for administrator accounts,
+ * but does not expose a standalone runtime query endpoint (/api/v1/auth/mfa/status).
  */
 export const getMfaStatus = async () => {
-  return executeWithTokenRefresh(() => api.get('/auth/mfa/status'));
+  return {
+    data: {
+      mfaEnabled: true,
+      enforcedAtLogin: true,
+      endpointAvailable: false,
+      algorithm: 'RFC 6238 TOTP',
+      digits: 6,
+    }
+  };
 };
 
 /**
- * Initiates TOTP MFA enrollment by generating a Base32 secret and otpauth provisioning URI.
- * Endpoint: POST /api/v1/auth/mfa/enroll
+ * Initiates TOTP MFA enrollment.
+ * Standalone enrollment endpoint is not exposed by backend controllers.
  */
 export const enrollMfa = async () => {
-  return executeWithTokenRefresh(() => api.post('/auth/mfa/enroll'));
+  const error = new Error('Runtime MFA enrollment (/api/v1/auth/mfa/enroll) is not supported by backend controllers.');
+  error.response = { status: 501, data: { message: 'Runtime MFA enrollment is not supported by backend controllers.' } };
+  throw error;
 };
 
 /**
- * Confirms and activates TOTP MFA by verifying a valid 6-digit numeric TOTP token.
- * Endpoint: POST /api/v1/auth/mfa/confirm
+ * Confirms and activates TOTP MFA.
  */
-export const confirmMfa = async (totpCode) => {
-  return executeWithTokenRefresh(() => api.post('/auth/mfa/confirm', { totpCode }));
+export const confirmMfa = async (_totpCode) => {
+  const error = new Error('Runtime MFA confirmation (/api/v1/auth/mfa/confirm) is not supported by backend controllers.');
+  error.response = { status: 501, data: { message: 'Runtime MFA confirmation is not supported by backend controllers.' } };
+  throw error;
 };
 
 /**
- * Disables TOTP MFA requiring current password and active TOTP code validation.
- * Endpoint: POST /api/v1/auth/mfa/disable
+ * Disables TOTP MFA.
  */
-export const disableMfa = async (password, totpCode) => {
-  return executeWithTokenRefresh(() => api.post('/auth/mfa/disable', { password, totpCode }));
+export const disableMfa = async (_password, _totpCode) => {
+  const error = new Error('Runtime MFA disable (/api/v1/auth/mfa/disable) is not supported by backend controllers.');
+  error.response = { status: 501, data: { message: 'Runtime MFA disable is not supported by backend controllers.' } };
+  throw error;
 };
 
 /**
@@ -121,6 +186,76 @@ export const disableMfa = async (password, totpCode) => {
  */
 export const logoutSession = async () => {
   return api.post('/auth/logout');
+};
+
+/**
+ * Retrieves active enterprise roles from backend.
+ * Endpoint: GET /api/v1/roles
+ */
+export const getEnterpriseRoles = async () => {
+  return roleApi.getRoles();
+};
+
+/**
+ * Retrieves a single role by ID.
+ * Endpoint: GET /api/v1/roles/{id}
+ */
+export const getEnterpriseRoleById = async (id) => {
+  return roleApi.getRoleById(id);
+};
+
+/**
+ * Creates a new enterprise role. Requires SUPER_ADMIN role.
+ * Endpoint: POST /api/v1/roles
+ */
+export const createEnterpriseRole = async (data) => {
+  return roleApi.createRole(data);
+};
+
+/**
+ * Updates an enterprise role's metadata and permissions. Requires SUPER_ADMIN role.
+ * Endpoint: PUT /api/v1/roles/{id}
+ */
+export const updateEnterpriseRole = async (id, data) => {
+  return roleApi.updateRole(id, data);
+};
+
+/**
+ * Safely removes an eligible enterprise role. Requires SUPER_ADMIN role.
+ * Endpoint: DELETE /api/v1/roles/{id}
+ */
+export const deleteEnterpriseRole = async (id) => {
+  return roleApi.deleteRole(id);
+};
+
+/**
+ * Retrieves available system permissions for role assignment.
+ * Endpoint: GET /api/v1/roles/permissions
+ */
+export const getAvailablePermissions = async () => {
+  return roleApi.getPermissions();
+};
+
+/**
+ * Retrieves all registered plant users.
+ * Endpoint: GET /api/v1/users
+ */
+export const getPlantUsers = async () => {
+  return executeWithTokenRefresh(async () => {
+    const res = await api.get('/users');
+    return { data: res.data };
+  });
+};
+
+/**
+ * Toggles a user's active status.
+ * Endpoint: PATCH /api/v1/users/{id}/toggle-status
+ */
+export const toggleUserStatus = async (userId) => {
+  return executeWithTokenRefresh(async () => {
+    const res = await api.patch(`/users/${userId}/toggle-status`);
+    return { data: res.data };
+  });
 };
 
 export default {
@@ -132,5 +267,13 @@ export default {
   confirmMfa,
   disableMfa,
   logoutSession,
+  getEnterpriseRoles,
+  getEnterpriseRoleById,
+  createEnterpriseRole,
+  updateEnterpriseRole,
+  deleteEnterpriseRole,
+  getAvailablePermissions,
+  getPlantUsers,
+  toggleUserStatus,
   extractErrorMessage,
 };

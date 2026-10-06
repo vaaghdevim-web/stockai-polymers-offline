@@ -1,9 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  X, 
+  ArrowRightLeft, 
+  AlertTriangle, 
+  AlertCircle, 
+  CheckCircle2, 
+  ShieldAlert,
+  Barcode,
+  Sparkles,
+  Search
+} from 'lucide-react';
 import { warehouseApi, inventoryApi, stockTransferApi } from '../services/api';
 import BinSelect from './BinSelect';
 
-export default function CreateStockTransferModal({ isOpen, onClose, onTransferCreated }) {
+export default function CreateStockTransferModal({ 
+  isOpen, 
+  onClose, 
+  onTransferCreated,
+  initialData = null,
+  onOpenBarcodeScanner
+}) {
   const [warehouses, setWarehouses] = useState([]);
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
@@ -13,13 +29,13 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [materialBatches, setMaterialBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');
-  const [quantity, setQuantity] = useState('500');
+  const [quantity, setQuantity] = useState('100');
   const [transferDate, setTransferDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [autoComplete, setAutoComplete] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load warehouses and raw materials on open
+  // Load warehouses and raw materials on modal open
   useEffect(() => {
     let isMounted = true;
     const loadPrerequisites = async () => {
@@ -33,17 +49,39 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
         if (isMounted) {
           const whList = Array.isArray(whRes.data) ? whRes.data : [];
           setWarehouses(whList);
-          if (whList.length >= 2) {
-            setFromWarehouseId(whList[0].warehouseId);
-            setToWarehouseId(whList[1].warehouseId);
+
+          if (initialData?.fromWarehouseId) {
+            setFromWarehouseId(initialData.fromWarehouseId);
+            const targetWh = whList.find(w => w.warehouseId !== Number(initialData.fromWarehouseId));
+            if (targetWh) setToWarehouseId(targetWh.warehouseId);
+          } else if (whList.length >= 2) {
+            const firstWhId = whList[0].warehouseId;
+            setFromWarehouseId(firstWhId);
+            const distinctWh = whList.find((w) => w.warehouseId !== firstWhId && w.warehouseId === 3) ||
+                               whList.find((w) => w.warehouseId !== firstWhId);
+            if (distinctWh) {
+              setToWarehouseId(distinctWh.warehouseId);
+            }
           } else if (whList.length === 1) {
             setFromWarehouseId(whList[0].warehouseId);
+            setToWarehouseId('');
           }
 
           const rmList = Array.isArray(rmRes.data) ? rmRes.data : [];
           setRawMaterials(rmList);
-          if (rmList.length > 0) {
-            setSelectedMaterialId(rmList[0].materialId);
+          
+          if (initialData?.materialId) {
+            setSelectedMaterialId(initialData.materialId);
+          } else if (rmList.length > 0) {
+            const preferred = rmList.find((m) => m.materialId === 3 || m.materialCode === 'RM-PP-H030SG') || rmList[0];
+            setSelectedMaterialId(preferred.materialId);
+          }
+
+          if (initialData?.fromBinId) {
+            setFromBinId(initialData.fromBinId);
+          }
+          if (initialData?.quantity) {
+            setQuantity(String(initialData.quantity));
           }
         }
       } catch (err) {
@@ -59,7 +97,7 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
     return () => {
       isMounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   // Load batches whenever selectedMaterialId changes
   useEffect(() => {
@@ -71,8 +109,14 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
         if (isMounted) {
           const bList = Array.isArray(res.data) ? res.data : [];
           setMaterialBatches(bList);
-          if (bList.length > 0) {
+          if (initialData?.batchId && bList.some(b => b.batchId === Number(initialData.batchId))) {
+            setSelectedBatchId(initialData.batchId);
+          } else if (bList.length > 0) {
             setSelectedBatchId(bList[0].batchId);
+            const avail = Number(bList[0].availableWeightKg || 0);
+            if (avail > 0 && !initialData?.quantity) {
+              setQuantity(String(Math.min(100, avail)));
+            }
           } else {
             setSelectedBatchId('');
           }
@@ -89,7 +133,44 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
     return () => {
       isMounted = false;
     };
-  }, [selectedMaterialId]);
+  }, [selectedMaterialId, initialData]);
+
+  // Map known batch seed bins to assist user selection in Warehouse 1
+  useEffect(() => {
+    if (String(fromWarehouseId) === '1' && selectedBatchId && !initialData?.fromBinId) {
+      const bId = Number(selectedBatchId);
+      if (bId === 1 && (!fromBinId || fromBinId === 2 || fromBinId === 3)) {
+        setFromBinId(1);
+      } else if (bId === 2 && (!fromBinId || fromBinId === 1 || fromBinId === 3)) {
+        setFromBinId(2);
+      } else if (bId === 3 && (!fromBinId || fromBinId === 1 || fromBinId === 2)) {
+        setFromBinId(3);
+      }
+    }
+  }, [fromWarehouseId, selectedBatchId, fromBinId, initialData]);
+
+  // Default target bin when toWarehouseId changes to ensure a valid distinct destination bin
+  useEffect(() => {
+    if (String(toWarehouseId) === '3' && (!toBinId || toBinId === 1 || toBinId === 2 || toBinId === 3)) {
+      setToBinId(6);
+    } else if (String(toWarehouseId) === '2' && (!toBinId || toBinId === 1 || toBinId === 2 || toBinId === 3)) {
+      setToBinId(4);
+    }
+  }, [toWarehouseId, toBinId]);
+
+  // Active batch info and transferable stock limit
+  const activeBatch = useMemo(() => {
+    return materialBatches.find((b) => String(b.batchId) === String(selectedBatchId)) || null;
+  }, [materialBatches, selectedBatchId]);
+
+  const maxAvailableStock = activeBatch ? Number(activeBatch.availableWeightKg || 0) : 0;
+  const numQty = parseFloat(quantity) || 0;
+
+  // Validation checks
+  const isSameWarehouse = Boolean(fromWarehouseId && toWarehouseId && String(fromWarehouseId) === String(toWarehouseId));
+  const isSameBin = Boolean(fromBinId && toBinId && String(fromBinId) === String(toBinId));
+  const isQtyExceeded = numQty > maxAvailableStock && maxAvailableStock > 0;
+  const isQtyInvalid = isNaN(numQty) || numQty <= 0;
 
   if (!isOpen) return null;
 
@@ -103,7 +184,7 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
     }
 
     if (String(fromWarehouseId) === String(toWarehouseId)) {
-      setError('Source warehouse and destination warehouse cannot be the same facility.');
+      setError('Inter-facility requirement: Source and destination must be distinct warehouses. Same-warehouse bin transfers are prohibited by the backend ledger.');
       return;
     }
 
@@ -112,14 +193,23 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
       return;
     }
 
+    if (String(fromBinId) === String(toBinId)) {
+      setError('Source bin and destination bin cannot be identical.');
+      return;
+    }
+
     if (!selectedBatchId) {
       setError('Please select a valid material batch with available inventory.');
       return;
     }
 
-    const qty = parseFloat(quantity);
-    if (isNaN(qty) || qty <= 0) {
+    if (numQty <= 0) {
       setError('Transfer quantity must be greater than 0.');
+      return;
+    }
+
+    if (maxAvailableStock > 0 && numQty > maxAvailableStock) {
+      setError(`Transfer quantity (${numQty.toLocaleString()} kg) cannot exceed available transferable stock (${maxAvailableStock.toLocaleString()} kg) for batch ${activeBatch?.batchNo}.`);
       return;
     }
 
@@ -129,28 +219,38 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
       const payload = {
         fromWarehouseId: Number(fromWarehouseId),
         toWarehouseId: Number(toWarehouseId),
-        transferDate: transferDate,
         autoComplete: Boolean(autoComplete),
         items: [
           {
+            materialId: Number(selectedMaterialId),
             materialBatchId: Number(selectedBatchId),
-            finishedBatchId: null,
+            batchId: Number(selectedBatchId),
             fromBinId: Number(fromBinId),
             toBinId: Number(toBinId),
-            quantity: qty,
-            uomCode: 'KG',
+            quantity: numQty,
           },
         ],
       };
 
-      await stockTransferApi.createTransfer(payload);
+      const res = await stockTransferApi.createTransfer(payload);
+      let createdTransfer = res.data;
+
+      if (autoComplete && createdTransfer?.transferId && createdTransfer.status !== 'Completed') {
+        try {
+          const compRes = await stockTransferApi.completeTransfer(createdTransfer.transferId);
+          createdTransfer = compRes.data;
+        } catch (completeErr) {
+          console.warn('Auto-complete transfer warning:', completeErr);
+        }
+      }
+
       if (onTransferCreated) {
-        onTransferCreated();
+        onTransferCreated(createdTransfer);
       }
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Failed to initiate stock transfer.';
-      setError(msg);
+      const respMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+      setError(`Transfer creation failed: ${respMsg}`);
     } finally {
       setSubmitting(false);
     }
@@ -158,208 +258,264 @@ export default function CreateStockTransferModal({ isOpen, onClose, onTransferCr
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ArrowRightLeft size={18} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Initiate Stock Transfer
-            </h3>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: '640px', padding: '0', borderRadius: '12px' }}
+      >
+        {/* Modal Header */}
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: '1px solid var(--border-default)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: '#0B1117',
+          color: '#FFFFFF'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
+              background: '#0284C7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF'
+            }}>
+              <ArrowRightLeft size={16} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
+                Inter-Unit Batch Transfer & Putaway
+              </h3>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                Transfer material lots and pallets between Unit 1, Unit 2 & Central Warehouse
+              </div>
+            </div>
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
-            <X size={16} />
+
+          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ color: '#94A3B8', padding: '4px' }}>
+            <X size={18} />
           </button>
         </div>
 
-        {error && (
+        {/* Modal Body Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#FFFFFF' }}>
+          {/* Barcode / QR Scan Autofill Banner */}
           <div style={{
-            padding: '8px 12px',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--accent-coral)',
-            fontSize: '12px',
-            marginBottom: '12px',
+            padding: '10px 14px',
+            background: '#F0F9FF',
+            border: '1px solid #BAE6FD',
+            borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            justifyContent: 'space-between'
           }}>
-            <AlertTriangle size={15} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Warehouse Route */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Source Warehouse
-              </label>
-              <select
-                className="select"
-                value={fromWarehouseId}
-                onChange={(e) => {
-                  setFromWarehouseId(e.target.value);
-                  setFromBinId('');
-                }}
-                required
-              >
-                <option value="">-- Select Source --</option>
-                {warehouses.map((w) => (
-                  <option key={w.warehouseId} value={w.warehouseId}>
-                    {w.warehouseName}
-                  </option>
-                ))}
-              </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#0369A1' }}>
+              <Barcode size={16} />
+              <span>
+                {initialData?.palletCode || initialData?.materialCode
+                  ? `Autofilled from Scanned Barcode: ${initialData.palletCode || initialData.materialCode}`
+                  : 'Scan any pallet or material lot to autofill transfer details'}
+              </span>
             </div>
-
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Destination Warehouse
-              </label>
-              <select
-                className="select"
-                value={toWarehouseId}
-                onChange={(e) => {
-                  setToWarehouseId(e.target.value);
-                  setToBinId('');
-                }}
-                required
+            {onOpenBarcodeScanner && (
+              <button
+                type="button"
+                onClick={onOpenBarcodeScanner}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '11px', padding: '3px 8px', background: '#FFFFFF' }}
               >
-                <option value="">-- Select Destination --</option>
-                {warehouses.map((w) => (
-                  <option key={w.warehouseId} value={w.warehouseId}>
-                    {w.warehouseName}
-                  </option>
-                ))}
-              </select>
+                <Barcode size={13} color="#0284C7" /> Scan Code
+              </button>
+            )}
+          </div>
+
+          {error && (
+            <div style={{
+              padding: '10px 14px',
+              background: 'var(--accent-coral-light)',
+              border: '1px solid var(--accent-coral-border)',
+              borderRadius: '6px',
+              color: 'var(--accent-coral-text)',
+              fontSize: '12.5px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px'
+            }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>{error}</span>
             </div>
-          </div>
+          )}
 
-          {/* Dynamic Bins for Selected Warehouses */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <BinSelect
-              warehouseId={fromWarehouseId ? Number(fromWarehouseId) : null}
-              showWarehouseSelect={false}
-              value={fromBinId}
-              onChange={(bId) => setFromBinId(bId)}
-              binLabel="Source Bin (Outflow)"
-              required
-            />
-
-            <BinSelect
-              warehouseId={toWarehouseId ? Number(toWarehouseId) : null}
-              showWarehouseSelect={false}
-              value={toBinId}
-              onChange={(bId) => setToBinId(bId)}
-              binLabel="Destination Bin (Inflow)"
-              required
-            />
-          </div>
-
-          {/* Material & Batch Selection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {/* Material & Batch Selection Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Material SKU
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                Raw Material / SKU
               </label>
               <select
                 className="select"
                 value={selectedMaterialId}
                 onChange={(e) => setSelectedMaterialId(e.target.value)}
-                required
               >
                 {rawMaterials.map((rm) => (
                   <option key={rm.materialId} value={rm.materialId}>
-                    {rm.materialCode} — {rm.materialName}
+                    {rm.materialName} ({rm.materialCode})
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Batch Identifier
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                Material Batch (FIFO Queue)
               </label>
               <select
-                className="select font-mono"
+                className="select"
                 value={selectedBatchId}
                 onChange={(e) => setSelectedBatchId(e.target.value)}
-                required
               >
-                {materialBatches.length > 0 ? (
-                  materialBatches.map((b) => (
-                    <option key={b.batchId} value={b.batchId}>
-                      {b.batchNo} (Available: {b.availableWeightKg || b.quantityOnHand || b.quantityKg || 0} kg)
-                    </option>
-                  ))
-                ) : (
-                  <option value="">-- No batches with stock available --</option>
-                )}
+                {materialBatches.map((b) => (
+                  <option key={b.batchId} value={b.batchId}>
+                    {b.batchNo} (Avail: {Number(b.availableWeightKg || 0).toLocaleString()} kg)
+                  </option>
+                ))}
+                {materialBatches.length === 0 && <option value="">No batches available</option>}
               </select>
             </div>
           </div>
 
-          {/* Quantity & Transfer Date */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {/* Origin & Destination Facilities */}
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid var(--border-default)',
+            borderRadius: '8px',
+            padding: '14px',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px'
+          }}>
+            {/* Source Warehouse & Bin */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#0284C7', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Source Facility (Origin)
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Warehouse
+                </label>
+                <select
+                  className="select"
+                  value={fromWarehouseId}
+                  onChange={(e) => setFromWarehouseId(e.target.value)}
+                >
+                  {warehouses.map((w) => (
+                    <option key={w.warehouseId} value={w.warehouseId}>
+                      {w.warehouseName || `Warehouse #${w.warehouseId}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Source Storage Bin
+                </label>
+                <BinSelect
+                  warehouseId={fromWarehouseId}
+                  value={fromBinId}
+                  onChange={setFromBinId}
+                  placeholder="Select source bin..."
+                />
+              </div>
+            </div>
+
+            {/* Destination Warehouse & Bin */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#10B981', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Destination Facility (Target)
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Target Warehouse
+                </label>
+                <select
+                  className="select"
+                  value={toWarehouseId}
+                  onChange={(e) => setToWarehouseId(e.target.value)}
+                >
+                  {warehouses.map((w) => (
+                    <option key={w.warehouseId} value={w.warehouseId}>
+                      {w.warehouseName || `Warehouse #${w.warehouseId}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  Destination Bin
+                </label>
+                <BinSelect
+                  warehouseId={toWarehouseId}
+                  value={toBinId}
+                  onChange={setToBinId}
+                  placeholder="Select target bin..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Transfer Quantity & Auto-complete */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'center' }}>
             <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Transfer Quantity (kg)
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                Transfer Quantity (kg / units)
               </label>
               <input
                 type="number"
-                step="0.1"
-                min="0.1"
-                required
+                step="0.01"
                 className="input font-mono"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
+                placeholder="100.00"
+                style={{ fontWeight: '700' }}
               />
+              {activeBatch && (
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Max transferable in lot: <strong style={{ color: 'var(--text-primary)' }}>{maxAvailableStock.toLocaleString()} kg</strong>
+                </div>
+              )}
             </div>
 
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Scheduled Transfer Date
-              </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
               <input
-                type="date"
-                required
-                className="input font-mono"
-                value={transferDate}
-                onChange={(e) => setTransferDate(e.target.value)}
+                type="checkbox"
+                id="autoCompleteCheck"
+                checked={autoComplete}
+                onChange={(e) => setAutoComplete(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
               />
+              <label htmlFor="autoCompleteCheck" style={{ fontSize: '12.5px', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                Instantly complete putaway upon submit
+              </label>
             </div>
           </div>
 
-          {/* Auto Complete Checkbox */}
-          <div style={{
-            background: 'var(--bg-surface)',
-            padding: '10px 12px',
-            borderRadius: 'var(--radius-xs)',
-            border: '1px solid var(--border-subtle)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <input
-              type="checkbox"
-              id="autoCompleteCheck"
-              checked={autoComplete}
-              onChange={(e) => setAutoComplete(e.target.checked)}
-              style={{ cursor: 'pointer', accentColor: 'var(--accent-cyan)' }}
-            />
-            <label htmlFor="autoCompleteCheck" style={{ fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <strong>Instant Completion:</strong> Automatically execute atomic double-entry inventory ledger movement upon creation.
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-            <button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
+          {/* Modal Footer Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', borderTop: '1px solid var(--border-default)', paddingTop: '14px' }}>
+            <button type="button" onClick={onClose} className="btn btn-secondary">
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
-              {submitting ? 'Creating Transfer Order...' : 'Dispatch Transfer Order'}
+            <button
+              type="submit"
+              disabled={submitting || isSameWarehouse || isSameBin || isQtyInvalid || isQtyExceeded}
+              className="btn btn-primary"
+            >
+              {submitting ? 'Executing Transfer...' : 'Confirm Inter-Unit Transfer'}
             </button>
           </div>
         </form>

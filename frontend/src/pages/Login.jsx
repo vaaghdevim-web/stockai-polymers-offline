@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Lock, User, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User, AlertTriangle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import TotpVerificationModal from '../components/TotpVerificationModal';
 
 export default function Login() {
   const { login } = useAuth();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [error, setError] = useState('');
   const [totpError, setTotpError] = useState('');
@@ -81,30 +82,27 @@ export default function Login() {
         zIndex: 10
       }}>
         {/* Brand Banner */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'var(--accent-cyan)',
-            color: '#04090F',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: '800',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '18px'
-          }}>
-            SVP
-          </div>
-          <div>
-            <h1 style={{ fontSize: '17px', fontWeight: '800', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-              StockAI OS
-            </h1>
-            <p style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-              Sri Vidhya Polymers · Enterprise Control
-            </p>
-          </div>
+        <div style={{
+          marginBottom: '24px',
+          background: '#FFFFFF',
+          borderRadius: '10px',
+          padding: '10px 14px',
+          border: '1px solid #E2E8F0',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <img 
+            src="/stockai-full-logo.jpg" 
+            alt="StockAI OS — Sri Vidhya Polymers" 
+            style={{
+              maxWidth: '100%',
+              height: '48px',
+              objectFit: 'contain',
+              display: 'block'
+            }}
+          />
         </div>
 
         {/* Security Alert / Info */}
@@ -168,15 +166,36 @@ export default function Login() {
             </label>
             <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 className="input"
                 placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingLeft: '32px' }}
+                style={{ paddingLeft: '32px', paddingRight: '36px' }}
               />
               <Lock size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
             </div>
           </div>
 

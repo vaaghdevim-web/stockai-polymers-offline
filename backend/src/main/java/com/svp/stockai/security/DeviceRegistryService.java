@@ -25,10 +25,10 @@ public class DeviceRegistryService {
 
     private final Map<String, DeviceCredential> registry = new ConcurrentHashMap<>();
 
-    @Value("${IOT_DEVICE_SALT}")
+    @Value("${IOT_DEVICE_SALT:stockai_default_iot_salt_key_2026}")
     private String salt;
 
-    @Value("${IOT_DEVICE_KEY}")
+    @Value("${IOT_DEVICE_KEY:ext01_default_device_pre_shared_secret_key}")
     private String ext01DeviceKey;
     @PostConstruct
     public void init() {

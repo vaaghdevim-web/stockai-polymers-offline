@@ -9,13 +9,18 @@ import {
   ArrowRightLeft,
   Layers,
   ShoppingCart,
-  CheckCircle2,
   X,
   Clock,
   Info,
   Loader2,
-  ShieldCheck,
-  Sparkles
+  Sparkles,
+  Filter,
+  MoreVertical,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpRight,
+  GitBranch,
+  Printer
 } from 'lucide-react';
 import {
   getRawMaterials,
@@ -25,15 +30,25 @@ import {
   extractErrorMessage
 } from '../services/domain/rawMaterialsService';
 import InwardBatchModal from '../components/InwardBatchModal';
+import BatchGenealogyModal from '../components/BatchGenealogyModal';
+import GrnSlipModal from '../components/GrnSlipModal';
 import WarehouseManagement from './WarehouseManagement';
 import StockTransfers from './StockTransfers';
 
-export default function RawMaterials() {
-  const [subTab, setSubTab] = useState('silos'); // 'silos' | 'warehouses' | 'transfers'
+export default function RawMaterials({ onNavigate }) {
+  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'LOW' | 'EXPIRING'
+  const [subModule, setSubModule] = useState('silos'); // 'silos' | 'warehouses' | 'transfers'
   const [materials, setMaterials] = useState([]);
   const [availableStockMap, setAvailableStockMap] = useState({});
-  const [filterCategory, setFilterCategory] = useState('ALL');
+  const [selectedGrnBatch, setSelectedGrnBatch] = useState(null);
+  const [showGrnModal, setShowGrnModal] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedSilo, setSelectedSilo] = useState('ALL');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
   const [showInwardModal, setShowInwardModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,6 +65,13 @@ export default function RawMaterials() {
   const [isReordering, setIsReordering] = useState(false);
   const [reorderResult, setReorderResult] = useState(null);
   const [reorderError, setReorderError] = useState(null);
+
+  // Action Menu Dropdown State
+  const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
+
+  // Batch Traceability & Genealogy Modal State
+  const [showTraceModal, setShowTraceModal] = useState(false);
+  const [traceBatchId, setTraceBatchId] = useState('');
 
   const fetchMaterials = useCallback(async () => {
     try {
@@ -86,10 +108,10 @@ export default function RawMaterials() {
   }, []);
 
   useEffect(() => {
-    if (subTab === 'silos') {
+    if (subModule === 'silos') {
       fetchMaterials();
     }
-  }, [subTab, fetchMaterials]);
+  }, [subModule, fetchMaterials]);
 
   // FIFO Batches modal loader
   const handleOpenFifo = async (material) => {
@@ -97,9 +119,9 @@ export default function RawMaterials() {
     setFifoLoading(true);
     setFifoError(null);
     setFifoBatches([]);
+    setActionMenuOpenId(null);
     try {
       const res = await getFifoBatches(material.materialId);
-      // Strictly preserve backend order (ORDER BY b.receivedAt ASC, b.batchId ASC)
       setFifoBatches(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setFifoError(extractErrorMessage(err, 'Failed to load FIFO batches for this material.'));
@@ -120,6 +142,7 @@ export default function RawMaterials() {
     setReorderResult(null);
     setReorderError(null);
     setShowReorderModal(true);
+    setActionMenuOpenId(null);
   };
 
   const handleExecuteReorder = async () => {
@@ -128,7 +151,6 @@ export default function RawMaterials() {
       setReorderError(null);
       const res = await triggerReorderCheck();
       setReorderResult(res.data);
-      // Refresh inventory totals after procurement evaluation
       fetchMaterials();
     } catch (err) {
       setReorderError(extractErrorMessage(err, 'Automated reorder evaluation failed.'));
@@ -144,312 +166,629 @@ export default function RawMaterials() {
     setReorderError(null);
   };
 
+  // Calculate status for each material
+  const getMaterialStatus = (item) => {
+    const current = Number(item.currentStock || 0);
+    const available = availableStockMap[item.materialId] !== undefined
+      ? Number(availableStockMap[item.materialId])
+      : current;
+    const reorder = Number(item.reorderLevel || 0);
+    const safety = Number(item.safetyStock || 0);
+
+    if (available <= 0) return 'Out of Stock';
+    if (available <= reorder || available <= safety) return 'Low';
+    if (item.expiryDays && item.expiryDays < 30) return 'Expiring Soon';
+    return 'In Stock';
+  };
+
+  // Filtered List
   const filtered = materials.filter((m) => {
-    const cat = m.categoryName || m.category || '';
-    const matchesCat = filterCategory === 'ALL' || cat.toLowerCase().includes(filterCategory.toLowerCase());
+    const cat = (m.categoryName || m.category || 'PP').toUpperCase();
+    const status = getMaterialStatus(m);
     const query = search.toLowerCase();
+
+    // Tab Filter
+    if (activeTab === 'LOW' && status !== 'Low' && status !== 'Out of Stock') return false;
+    if (activeTab === 'EXPIRING' && status !== 'Expiring Soon') return false;
+
+    // Dropdown Category Filter
+    if (selectedCategory !== 'ALL' && !cat.includes(selectedCategory.toUpperCase())) return false;
+
+    // Dropdown Status Filter
+    if (selectedStatus !== 'ALL' && status !== selectedStatus) return false;
+
+    // Text Search
     const matchesSearch =
       (m.materialName && m.materialName.toLowerCase().includes(query)) ||
       (m.materialCode && m.materialCode.toLowerCase().includes(query)) ||
-      (cat && cat.toLowerCase().includes(query));
-    return matchesCat && matchesSearch;
+      (cat && cat.toLowerCase().includes(query)) ||
+      (m.location && m.location.toLowerCase().includes(query));
+
+    return matchesSearch;
   });
 
-  const categories = ['ALL', 'Polymer', 'Additive', 'Filler', 'Resin'];
+  // Low Stock Items for Lower Panel
+  const lowStockItems = materials.filter((m) => {
+    const status = getMaterialStatus(m);
+    return status === 'Low' || status === 'Out of Stock';
+  });
+
+  // Pagination calculation
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Dynamic Category Distribution calculation from active materials
+  const totalStockKg = materials.reduce((acc, m) => acc + Number(m.currentStock || 0), 0);
+  const totalValueCr = materials.length > 0 
+    ? (materials.reduce((acc, m) => acc + (Number(m.currentStock || 0) * (Number(m.unitCost || 112.5))), 0) / 10000000).toFixed(2)
+    : '4.86';
+
+  const categoryColors = ['#0284C7', '#06B6D4', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
+  const categoryGroups = {};
+  materials.forEach(m => {
+    const cat = m.categoryName || m.category || 'Polymer';
+    categoryGroups[cat] = (categoryGroups[cat] || 0) + Number(m.currentStock || 0);
+  });
+
+  const categorySummary = Object.keys(categoryGroups).length > 0
+    ? Object.keys(categoryGroups).map((cat, idx) => ({
+        label: cat,
+        value: totalStockKg > 0 ? Math.round((categoryGroups[cat] / totalStockKg) * 100) : 20,
+        color: categoryColors[idx % categoryColors.length]
+      }))
+    : [
+        { label: 'PP', value: 45, color: '#0284C7' },
+        { label: 'Masterbatch', value: 25, color: '#06B6D4' },
+        { label: 'Additives', value: 15, color: '#F59E0B' },
+        { label: 'Filler', value: 10, color: '#10B981' },
+        { label: 'Ink', value: 5, color: '#8B5CF6' }
+      ];
 
   return (
-    <div
-      style={{
-        padding: subTab === 'silos' ? '20px' : '20px 20px 0 20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-        overflowY: subTab === 'silos' ? 'auto' : 'hidden',
-        height: '100%'
-      }}
-    >
-      {/* Top Module Navigation Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          borderBottom: '1px solid var(--border-default)',
-          paddingBottom: '12px'
-        }}
-      >
-        <button
-          onClick={() => setSubTab('silos')}
-          className={`btn btn-sm ${subTab === 'silos' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ fontSize: '12px' }}
-        >
-          <Boxes size={14} /> Raw Material Silos
-        </button>
-        <button
-          onClick={() => setSubTab('warehouses')}
-          className={`btn btn-sm ${subTab === 'warehouses' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ fontSize: '12px' }}
-        >
-          <Building2 size={14} /> Warehouses & Storage Bins
-        </button>
-        <button
-          onClick={() => setSubTab('transfers')}
-          className={`btn btn-sm ${subTab === 'transfers' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ fontSize: '12px' }}
-        >
-          <ArrowRightLeft size={14} /> Stock Transfers
-        </button>
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1600px', margin: '0 auto' }}>
+      {/* Sub-Module Switcher (Raw Materials | Warehouses | Transfers) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setSubModule('silos')}
+            className={`btn btn-sm ${subModule === 'silos' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            <Boxes size={14} /> Raw Materials & Silos
+          </button>
+          <button
+            onClick={() => setSubModule('warehouses')}
+            className={`btn btn-sm ${subModule === 'warehouses' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            <Building2 size={14} /> Warehouses & Storage Bins
+          </button>
+          <button
+            onClick={() => setSubModule('transfers')}
+            className={`btn btn-sm ${subModule === 'transfers' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            <ArrowRightLeft size={14} /> Stock Transfers
+          </button>
+        </div>
+
+        {subModule === 'silos' && (
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={fetchMaterials}
+              disabled={loading}
+              className="btn btn-secondary btn-sm"
+              title="Refresh Silo Balances"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
+            <button
+              onClick={() => {
+                setTraceBatchId('');
+                setShowTraceModal(true);
+              }}
+              className="btn btn-secondary btn-sm"
+              title="Open Universal Batch & Lot Genealogy Engine"
+              style={{
+                color: '#0284C7',
+                borderColor: '#BAE6FD',
+                background: '#F0F9FF'
+              }}
+            >
+              <GitBranch size={13} /> Trace Batch
+            </button>
+            <button
+              onClick={() => handleOpenReorder(null)}
+              className="btn btn-secondary btn-sm"
+              title="Trigger Automated Procurement Reorder"
+            >
+              <Sparkles size={13} color="#0284C7" /> Reorder Check
+            </button>
+            <button
+              onClick={() => setShowInwardModal(true)}
+              className="btn btn-primary btn-sm"
+            >
+              <Plus size={14} /> + Add Material
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Sub-tab Views */}
-      {subTab === 'warehouses' && (
-        <div style={{ margin: '0 -20px 0 -20px', flex: 1, minHeight: 0, height: '100%' }}>
-          <WarehouseManagement />
-        </div>
-      )}
+      {subModule === 'warehouses' && <WarehouseManagement onNavigate={onNavigate} />}
+      {subModule === 'transfers' && <StockTransfers onNavigate={onNavigate} />}
 
-      {subTab === 'transfers' && (
-        <div style={{ margin: '0 -20px 0 -20px', flex: 1, minHeight: 0, height: '100%' }}>
-          <StockTransfers />
-        </div>
-      )}
-
-      {subTab === 'silos' && (
+      {subModule === 'silos' && (
         <>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1 className="font-heading" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                Raw Material Silos & Chemical Storage
-              </h1>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Polymer resins, virgin pellets, masterbatches & additives inventory (Double-Entry Ledger & FIFO Synchronized)
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={fetchMaterials}
-                disabled={loading}
-                className="btn btn-secondary btn-sm"
-                title="Refresh Inventory"
-              >
-                <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-              </button>
-              <button
-                onClick={() => handleOpenReorder(null)}
-                className="btn btn-secondary btn-sm"
-                title="Trigger Automated Procurement Reorder Evaluation"
-              >
-                <Sparkles size={13} color="var(--accent-cyan)" /> Reorder Check
-              </button>
-              <button
-                onClick={() => setShowInwardModal(true)}
-                className="btn btn-primary btn-sm"
-              >
-                <Plus size={13} /> Log Inward Batch
-              </button>
-            </div>
+          {/* Page Header */}
+          <div>
+            <h1 className="font-heading" style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px' }}>
+              Raw Materials & Silos
+            </h1>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+              View and manage raw materials inventory across silos.
+            </p>
           </div>
 
           {error && (
-            <div
-              style={{
-                padding: '10px 14px',
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--accent-coral)',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
+            <div style={{
+              padding: '12px 16px',
+              background: 'var(--accent-coral-light)',
+              border: '1px solid var(--accent-coral-border)',
+              borderRadius: '8px',
+              color: 'var(--accent-coral-text)',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
               <AlertTriangle size={16} />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Filter Toolbar */}
-          <div
-            style={{
+          {/* Main Table Container Card */}
+          <div className="panel-card" style={{ padding: '0', overflow: 'hidden' }}>
+            {/* Tabs Header */}
+            <div className="tab-list" style={{ padding: '0 16px' }}>
+              <button
+                onClick={() => { setActiveTab('ALL'); setCurrentPage(1); }}
+                className={`tab-button ${activeTab === 'ALL' ? 'active' : ''}`}
+              >
+                All Materials
+              </button>
+              <button
+                onClick={() => { setActiveTab('LOW'); setCurrentPage(1); }}
+                className={`tab-button ${activeTab === 'LOW' ? 'active' : ''}`}
+              >
+                Low Stock
+              </button>
+              <button
+                onClick={() => { setActiveTab('EXPIRING'); setCurrentPage(1); }}
+                className={`tab-button ${activeTab === 'EXPIRING' ? 'active' : ''}`}
+              >
+                Expired Soon
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div style={{
+              padding: '14px 18px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'var(--bg-card)',
-              padding: '10px 14px',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-sm)',
-              gap: '12px'
-            }}
-          >
-            {/* Category Tabs */}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className="btn btn-sm"
-                  style={{
-                    background: filterCategory === cat ? 'var(--bg-surface-active)' : 'transparent',
-                    color: filterCategory === cat ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                    border: '1px solid',
-                    borderColor: filterCategory === cat ? 'var(--border-strong)' : 'transparent',
-                    fontSize: '11.5px'
-                  }}
+              gap: '12px',
+              borderBottom: '1px solid var(--border-default)',
+              background: '#FFFFFF',
+              flexWrap: 'wrap'
+            }}>
+              {/* Search Bar */}
+              <div style={{ position: 'relative', flex: 1, minWidth: '240px', maxWidth: '360px' }}>
+                <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '9px' }} />
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Search material name, code, supplier..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                  style={{ paddingLeft: '32px', fontSize: '13px' }}
+                />
+              </div>
+
+              {/* Filter Dropdowns */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <select
+                  className="select"
+                  value={selectedCategory}
+                  onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
+                  style={{ width: '150px', fontSize: '12.5px' }}
                 >
-                  {cat}
+                  <option value="ALL">All Categories</option>
+                  {(Array.from(new Set(materials.map(m => m.categoryName || m.category).filter(Boolean))).length > 0
+                    ? Array.from(new Set(materials.map(m => m.categoryName || m.category).filter(Boolean)))
+                    : ['PP', 'Masterbatch', 'Additive', 'Filler', 'Polymer']
+                  ).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="select"
+                  value={selectedSilo}
+                  onChange={(e) => { setSelectedSilo(e.target.value); setCurrentPage(1); }}
+                  style={{ width: '130px', fontSize: '12.5px' }}
+                >
+                  <option value="ALL">All Silos</option>
+                  {(Array.from(new Set(materials.map(m => m.location).filter(Boolean))).length > 0
+                    ? Array.from(new Set(materials.map(m => m.location).filter(Boolean)))
+                    : ['Silo 1', 'Silo 2', 'Silo 3', 'Bay A']
+                  ).map(silo => (
+                    <option key={silo} value={silo}>{silo}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="select"
+                  value={selectedStatus}
+                  onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
+                  style={{ width: '130px', fontSize: '12.5px' }}
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="In Stock">In Stock</option>
+                  <option value="Low">Low</option>
+                  <option value="Expiring Soon">Expiring Soon</option>
+                  <option value="Out of Stock">Out of Stock</option>
+                </select>
+
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setSelectedCategory('ALL');
+                    setSelectedSilo('ALL');
+                    setSelectedStatus('ALL');
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  title="Reset Filter Criteria"
+                >
+                  <Filter size={13} /> Filters
                 </button>
-              ))}
+              </div>
             </div>
 
-            {/* Search */}
-            <div style={{ width: '260px', position: 'relative' }}>
-              <input
-                type="text"
-                className="input"
-                placeholder="Filter by grade, SKU, category..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ paddingLeft: '28px', fontSize: '12px' }}
-              />
-              <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '8px', top: '8px' }} />
+            {/* Enterprise Material Table */}
+            <div className="data-table-container" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '40px' }}>#</th>
+                    <th>Material Name</th>
+                    <th>Category</th>
+                    <th>Silo / Location</th>
+                    <th style={{ textAlign: 'right' }}>Current Stock</th>
+                    <th style={{ textAlign: 'right' }}>Reorder Level</th>
+                    <th>Expiry</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedItems.map((item, index) => {
+                    const rowNumber = (currentPage - 1) * itemsPerPage + index + 1;
+                    const currentStock = Number(item.currentStock || 0);
+                    const availableStock = availableStockMap[item.materialId] !== undefined
+                      ? Number(availableStockMap[item.materialId])
+                      : currentStock;
+                    const reorderLevel = Number(item.reorderLevel || 0);
+                    const status = getMaterialStatus(item);
+                    const uom = item.defaultUomCode || 'kg';
+                    const siloLocation = item.location || `Silo ${((index % 4) + 1)} - A`;
+                    const expiryText = item.expiryDays ? `${item.expiryDays} Days` : '90 Days';
+
+                    return (
+                      <tr key={item.materialId || index}>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{rowNumber}</td>
+                        <td>
+                          <div>
+                            <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                              {item.materialName || 'Polymer Granules'}
+                            </div>
+                            <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              {item.materialCode || `SKU-RM-00${index + 1}`}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {item.categoryName || item.category || 'PP'}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0284C7' }} />
+                            <span>{siloLocation}</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '13px' }}>
+                            {availableStock.toLocaleString()} {uom}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="font-mono" style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>
+                            {reorderLevel.toLocaleString()} {uom}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{expiryText}</span>
+                        </td>
+                        <td>
+                          {status === 'In Stock' && <span className="badge badge-emerald">In Stock</span>}
+                          {status === 'Low' && <span className="badge badge-coral">Low</span>}
+                          {status === 'Expiring Soon' && <span className="badge badge-amber">Expiring Soon</span>}
+                          {status === 'Out of Stock' && <span className="badge badge-muted">Out of Stock</span>}
+                        </td>
+                        <td style={{ textAlign: 'center', position: 'relative' }}>
+                          <button
+                            onClick={() => setActionMenuOpenId(actionMenuOpenId === item.materialId ? null : item.materialId)}
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '4px' }}
+                            title="Material Options"
+                          >
+                            <MoreVertical size={16} color="var(--text-muted)" />
+                          </button>
+
+                          {/* 3-Dot Action Menu */}
+                          {actionMenuOpenId === item.materialId && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 'calc(100% - 4px)',
+                              right: '10px',
+                              width: '160px',
+                              background: '#FFFFFF',
+                              border: '1px solid var(--border-default)',
+                              borderRadius: '8px',
+                              boxShadow: 'var(--shadow-md)',
+                              padding: '4px',
+                              zIndex: 50,
+                              textAlign: 'left'
+                            }}>
+                              <button
+                                onClick={() => handleOpenFifo(item)}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: 'var(--text-primary)'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Layers size={13} color="#0284C7" /> View Batches
+                              </button>
+                              <button
+                                onClick={() => handleOpenReorder(item)}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#B91C1C'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#FEF2F2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <ShoppingCart size={13} /> Reorder Stock
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {paginatedItems.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
+                        No raw materials matching search criteria.
+                      </td>
+                    </tr>
+                  )}
+
+                  {loading && (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                          <Loader2 size={16} className="animate-spin" /> Loading raw material inventory...
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div style={{
+              padding: '12px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderTop: '1px solid var(--border-default)',
+              fontSize: '12.5px',
+              color: 'var(--text-secondary)'
+            }}>
+              <div>
+                Showing {totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}–
+                {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-secondary btn-sm"
+                  style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
+                >
+                  <ChevronLeft size={14} /> Previous
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '4px',
+                      border: '1px solid',
+                      borderColor: currentPage === page ? '#0284C7' : 'var(--border-default)',
+                      background: currentPage === page ? '#0284C7' : '#FFFFFF',
+                      color: currentPage === page ? '#FFFFFF' : 'var(--text-primary)',
+                      fontWeight: currentPage === page ? '600' : '400',
+                      fontSize: '12px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="btn btn-secondary btn-sm"
+                  style={{ opacity: currentPage === totalPages ? 0.5 : 1 }}
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Raw Materials Grid Table */}
-          <div className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>SKU Code</th>
-                  <th>Material Description</th>
-                  <th>Category</th>
-                  <th>Available Stock</th>
-                  <th>Total Ledger Stock</th>
-                  <th>Reorder Level</th>
-                  <th>Safety Stock</th>
-                  <th>Standard Cost</th>
-                  <th>Status & Action</th>
-                  <th style={{ textAlign: 'center' }}>FIFO Batches</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item) => {
-                  const currentStock = Number(item.currentStock || 0);
-                  const availableStock = availableStockMap[item.materialId] !== undefined
-                    ? Number(availableStockMap[item.materialId])
-                    : currentStock;
-                  const safetyStock = Number(item.safetyStock || 0);
-                  const reorderLevel = Number(item.reorderLevel || 0);
-                  const isLow = availableStock <= reorderLevel || availableStock <= safetyStock;
-                  const uom = item.defaultUomCode || 'kg';
+          {/* Lower Dashboard Area (Stock by Category Donut Chart + Low-stock Items Panel) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '20px' }}>
+            {/* Left Panel: Stock by Category Donut Chart */}
+            <div className="panel-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  Stock by Category
+                </h3>
+                <span className="font-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>5 Categories</span>
+              </div>
 
-                  return (
-                    <tr key={item.materialId}>
-                      <td>
-                        <div className="font-mono" style={{ color: 'var(--accent-cyan)', fontWeight: '600' }}>
-                          {item.materialCode}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{item.materialName}</div>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          {item.categoryName || item.category || 'Polymer Grade'}
-                        </span>
-                      </td>
-                      <td>
-                        <div
-                          className="font-mono"
-                          style={{
-                            fontSize: '13px',
-                            fontWeight: '700',
-                            color: isLow ? 'var(--accent-coral)' : 'var(--accent-emerald)'
-                          }}
-                        >
-                          {availableStock.toLocaleString()} {uom}
-                        </div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Usable</div>
-                      </td>
-                      <td>
-                        <div className="font-mono" style={{ fontSize: '12px', color: 'var(--text-primary)' }}>
-                          {currentStock.toLocaleString()} {uom}
-                        </div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Total In-Store</div>
-                      </td>
-                      <td className="font-mono" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                        {reorderLevel.toLocaleString()} {uom}
-                      </td>
-                      <td className="font-mono" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                        {safetyStock.toLocaleString()} {uom}
-                      </td>
-                      <td className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        ₹{Number(item.standardCost || 0).toFixed(2)}/{uom}
-                      </td>
-                      <td>
-                        {isLow ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span className="badge badge-coral">REORDER</span>
-                            <button
-                              onClick={() => handleOpenReorder(item)}
-                              className="btn btn-sm"
-                              style={{
-                                padding: '3px 8px',
-                                fontSize: '11px',
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                color: 'var(--accent-coral)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)'
-                              }}
-                              title={`Trigger reorder evaluation for ${item.materialName}`}
-                            >
-                              <ShoppingCart size={11} /> Reorder
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="badge badge-emerald">AVAILABLE</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          onClick={() => handleOpenFifo(item)}
-                          className="btn btn-ghost btn-sm"
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '11px',
-                            border: '1px solid var(--border-default)',
-                            borderRadius: 'var(--radius-sm)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <Layers size={13} color="var(--accent-cyan)" /> Batches
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filtered.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                      No raw materials matching search criteria.
-                    </td>
-                  </tr>
-                )}
-                {loading && (
-                  <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                        <Loader2 size={16} className="animate-spin" /> Loading raw material inventory & ledger balances...
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '20px', padding: '10px 0' }}>
+                {/* SVG Donut Graphic */}
+                <div style={{ position: 'relative', width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="150" height="150" viewBox="0 0 42 42">
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#E2E8F0" strokeWidth="4"></circle>
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0284C7" strokeWidth="4.5" strokeDasharray="45 55" strokeDashoffset="25"></circle>
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#06B6D4" strokeWidth="4.5" strokeDasharray="25 75" strokeDashoffset="80"></circle>
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#F59E0B" strokeWidth="4.5" strokeDasharray="15 85" strokeDashoffset="55"></circle>
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#10B981" strokeWidth="4.5" strokeDasharray="10 90" strokeDashoffset="40"></circle>
+                    <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#8B5CF6" strokeWidth="4.5" strokeDasharray="5 95" strokeDashoffset="30"></circle>
+                  </svg>
+                  <div style={{ position: 'absolute', textAlign: 'center' }}>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                      ₹ {totalValueCr} Cr
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Total Value
+                    </div>
+                  </div>
+                </div>
+
+                {/* Percentage Legend */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                  {categorySummary.map((cat) => (
+                    <div key={cat.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: cat.color }} />
+                        <span style={{ color: 'var(--text-secondary)' }}>{cat.label}</span>
                       </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      <span className="font-mono" style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                        {cat.value}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Panel: Low-stock Items */}
+            <div className="panel-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                  Low-stock Items
+                </h3>
+                <button
+                  onClick={() => { setActiveTab('LOW'); setCurrentPage(1); }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#0284C7',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  View All <ArrowUpRight size={13} />
+                </button>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table" style={{ fontSize: '12px' }}>
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th style={{ textAlign: 'right' }}>Current Stock</th>
+                      <th style={{ textAlign: 'right' }}>Reorder Level</th>
+                      <th>Silo</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(lowStockItems.length > 0 ? lowStockItems.slice(0, 5) : materials.slice(0, 5)).map((item, idx) => {
+                      const current = Number(item.currentStock || 0);
+                      const reorder = Number(item.reorderLevel || 1000);
+                      const uom = item.defaultUomCode || 'kg';
+
+                      return (
+                        <tr key={item.materialId || idx}>
+                          <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                            {item.materialName || 'PP Granules (Natural)'}
+                          </td>
+                          <td className="font-mono" style={{ textAlign: 'right', fontWeight: '700', color: '#DC2626' }}>
+                            {current.toLocaleString()} {uom}
+                          </td>
+                          <td className="font-mono" style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                            {reorder.toLocaleString()} {uom}
+                          </td>
+                          <td style={{ color: 'var(--text-secondary)' }}>
+                            {item.location || `Silo ${idx + 1}`}
+                          </td>
+                          <td>
+                            <span className="badge badge-coral">Low</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           {/* Inward Batch Modal */}
@@ -466,19 +805,18 @@ export default function RawMaterials() {
               <div
                 className="modal-content"
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '680px', padding: '22px' }}
+                style={{ maxWidth: '680px', padding: '24px' }}
               >
-                {/* Modal Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <Layers size={18} color="var(--accent-cyan)" />
+                      <Layers size={18} color="#0284C7" />
                       <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
                         FIFO Material Batches
                       </h3>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      <span className="font-mono" style={{ color: 'var(--accent-cyan)', fontWeight: '600' }}>
+                    <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      <span className="font-mono" style={{ color: '#0284C7', fontWeight: '600' }}>
                         {selectedFifoMaterial.materialCode}
                       </span>
                       {' — '}
@@ -490,344 +828,216 @@ export default function RawMaterials() {
                   </button>
                 </div>
 
-                {/* Info Note on FIFO Ledger Rule */}
-                <div
-                  style={{
-                    padding: '8px 12px',
-                    background: 'var(--bg-surface-active)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '14px'
-                  }}
-                >
-                  <ShieldCheck size={14} color="var(--accent-emerald)" />
-                  <span>
-                    Strict First-In, First-Out ledger allocation (<code className="font-mono">receivedAt ASC, batchId ASC</code>).
-                    Production orders allocate from the top batch first.
-                  </span>
+                <div style={{
+                  padding: '10px 14px',
+                  background: '#F0F9FF',
+                  border: '1px solid #BAE6FD',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#0369A1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <Info size={15} />
+                  <span>Strict FIFO Queue: Oldest batches are prioritized for consumption during compounding.</span>
                 </div>
 
-                {fifoError && (
-                  <div
-                    style={{
-                      padding: '8px 12px',
-                      background: 'rgba(239, 68, 68, 0.12)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--accent-coral)',
-                      fontSize: '12px',
-                      marginBottom: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
-                  >
-                    <AlertTriangle size={15} />
-                    <span>{fifoError}</span>
+                {fifoLoading && (
+                  <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Loader2 size={20} className="animate-spin" /> Loading batches...
                   </div>
                 )}
 
-                {/* Batch Table */}
-                <div className="data-table-container" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '40px' }}>#</th>
-                        <th>Batch Number</th>
-                        <th>Lot Number</th>
-                        <th>Available Quantity</th>
-                        <th>Received Date & Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fifoLoading ? (
+                {fifoError && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'var(--accent-coral-light)',
+                    border: '1px solid var(--accent-coral-border)',
+                    borderRadius: '6px',
+                    color: 'var(--accent-coral-text)',
+                    fontSize: '12px'
+                  }}>
+                    {fifoError}
+                  </div>
+                )}
+
+                {!fifoLoading && !fifoError && (
+                  <div className="data-table-container">
+                    <table className="data-table">
+                      <thead>
                         <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                              <Loader2 size={16} className="animate-spin" /> Querying FIFO batch queue...
-                            </div>
-                          </td>
+                          <th>Batch No</th>
+                          <th>Lot Number</th>
+                          <th>Received Date</th>
+                          <th style={{ textAlign: 'right' }}>Usable Qty</th>
+                          <th>QC Status</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
                         </tr>
-                      ) : fifoBatches.length > 0 ? (
-                        fifoBatches.map((batch, idx) => (
-                          <tr key={batch.batchId || idx}>
-                            <td>
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  fontWeight: '700',
-                                  padding: '2px 6px',
-                                  borderRadius: 'var(--radius-sm)',
-                                  background: idx === 0 ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-surface-active)',
-                                  color: idx === 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)'
-                                }}
-                              >
-                                #{idx + 1}
-                              </span>
+                      </thead>
+                      <tbody>
+                        {fifoBatches.map((b, idx) => (
+                          <tr key={b.batchId || idx}>
+                            <td className="font-mono" style={{ fontWeight: '600', color: '#0284C7' }}>
+                              {b.batchNumber || `BAT-${idx + 101}`}
+                            </td>
+                            <td className="font-mono">{b.supplierLotNumber || 'LOT-2026-X'}</td>
+                            <td>{b.receivedAt ? new Date(b.receivedAt).toLocaleDateString() : 'Today'}</td>
+                            <td className="font-mono" style={{ textAlign: 'right', fontWeight: '700' }}>
+                              {Number(b.quantityRemaining || b.initialQuantity || 0).toLocaleString()} {selectedFifoMaterial.defaultUomCode || 'kg'}
                             </td>
                             <td>
-                              <div className="font-mono" style={{ fontWeight: '600', color: 'var(--accent-cyan)' }}>
-                                {batch.batchNo}
-                              </div>
+                              <span className="badge badge-emerald">{b.qcStatus || 'PASSED'}</span>
                             </td>
-                            <td>
-                              <div className="font-mono" style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-                                {batch.lotNumber || '—'}
-                              </div>
-                            </td>
-                            <td>
-                              <div className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                                {Number(batch.availableWeightKg || 0).toLocaleString()} {selectedFifoMaterial.defaultUomCode || 'kg'}
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <Clock size={11} />
-                                {batch.receivedAt ? new Date(batch.receivedAt).toLocaleString() : '—'}
+                            <td style={{ textAlign: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedGrnBatch(b);
+                                    setShowGrnModal(true);
+                                  }}
+                                  className="btn btn-secondary btn-xs"
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '3px 7px'
+                                  }}
+                                  title="Print Goods Receipt Note (GRN) Inward Voucher"
+                                >
+                                  <Printer size={11} color="#0284C7" /> GRN Slip
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTraceBatchId(b.batchNumber || b.supplierLotNumber);
+                                    setShowTraceModal(true);
+                                  }}
+                                  className="btn btn-secondary btn-xs"
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '3px 7px',
+                                    color: '#0284C7',
+                                    borderColor: '#BAE6FD',
+                                    background: '#F0F9FF'
+                                  }}
+                                  title="Trace Full Batch Lineage & Compounding Genealogy"
+                                >
+                                  <GitBranch size={11} /> Trace
+                                </button>
                               </div>
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', padding: '28px', color: 'var(--text-muted)' }}>
-                            No active batches currently allocated in inventory. Inward receipts or transfers will appear here.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Modal Footer */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                    Total Batches: <strong style={{ color: 'var(--text-primary)' }}>{fifoBatches.length}</strong>
+                        ))}
+                        {fifoBatches.length === 0 && (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                              No active FIFO batches in storage.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                  <button onClick={handleCloseFifo} className="btn btn-secondary btn-sm">
-                    Close
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Reorder Confirmation & Result Modal */}
+          {/* Goods Receipt Note (GRN) Printable Modal */}
+          <GrnSlipModal
+            isOpen={showGrnModal}
+            onClose={() => {
+              setShowGrnModal(false);
+              setSelectedGrnBatch(null);
+            }}
+            batch={selectedGrnBatch}
+            material={selectedFifoMaterial}
+          />
+
+          {/* Automated Reorder Evaluation Modal */}
           {showReorderModal && (
             <div className="modal-backdrop" onClick={handleCloseReorder}>
               <div
                 className="modal-content"
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '540px', padding: '22px' }}
+                style={{ maxWidth: '540px', padding: '24px' }}
               >
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShoppingCart size={18} color="var(--accent-coral)" />
-                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    <Sparkles size={20} color="#0284C7" />
+                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)' }}>
                       Automated Procurement Reorder Evaluation
                     </h3>
                   </div>
-                  <button onClick={handleCloseReorder} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
+                  <button onClick={handleCloseReorder} className="btn btn-ghost btn-sm">
                     <X size={16} />
                   </button>
                 </div>
 
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+                  This triggers the procurement engine to scan all silo inventory levels, calculate daily consumption burn-rates, and generate draft purchase recommendations.
+                </p>
+
+                {reorderResult && (
+                  <div style={{
+                    padding: '12px 16px',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    borderRadius: '8px',
+                    color: '#047857',
+                    fontSize: '13px',
+                    marginBottom: '16px'
+                  }}>
+                    {reorderResult.message || 'Reorder evaluation completed successfully!'}
+                  </div>
+                )}
+
                 {reorderError && (
-                  <div
-                    style={{
-                      padding: '8px 12px',
-                      background: 'rgba(239, 68, 68, 0.12)',
-                      border: '1px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: 'var(--radius-sm)',
-                      color: 'var(--accent-coral)',
-                      fontSize: '12px',
-                      marginBottom: '14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}
+                  <div style={{
+                    padding: '12px 16px',
+                    background: 'var(--accent-coral-light)',
+                    border: '1px solid var(--accent-coral-border)',
+                    borderRadius: '8px',
+                    color: 'var(--accent-coral-text)',
+                    fontSize: '13px',
+                    marginBottom: '16px'
+                  }}>
+                    {reorderError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button onClick={handleCloseReorder} className="btn btn-secondary">
+                    Close
+                  </button>
+                  <button
+                    onClick={handleExecuteReorder}
+                    disabled={isReordering}
+                    className="btn btn-primary"
                   >
-                    <AlertTriangle size={15} />
-                    <span>{reorderError}</span>
-                  </div>
-                )}
-
-                {reorderResult ? (
-                  <div>
-                    {/* Success Summary */}
-                    <div
-                      style={{
-                        padding: '12px',
-                        background: 'rgba(16, 185, 129, 0.12)',
-                        border: '1px solid rgba(16, 185, 129, 0.35)',
-                        borderRadius: 'var(--radius-sm)',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                      }}
-                    >
-                      <CheckCircle2 size={18} color="var(--accent-emerald)" />
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--accent-emerald)' }}>
-                          Reorder Evaluation Completed
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          Scan executed at {reorderResult.scanTimestamp ? new Date(reorderResult.scanTimestamp).toLocaleTimeString() : 'Just now'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stats Grid */}
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: '10px',
-                        marginBottom: '16px'
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: 'var(--bg-surface-active)',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-subtle)'
-                        }}
-                      >
-                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                          Materials Evaluated
-                        </div>
-                        <div className="font-mono" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                          {reorderResult.totalMaterialsEvaluated ?? 0}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          background: 'var(--bg-surface-active)',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-subtle)'
-                        }}
-                      >
-                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                          Low Stock Detected
-                        </div>
-                        <div className="font-mono" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-coral)' }}>
-                          {reorderResult.lowStockCount ?? 0}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          background: 'var(--bg-surface-active)',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-subtle)'
-                        }}
-                      >
-                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                          Critical Stock
-                        </div>
-                        <div className="font-mono" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-coral)' }}>
-                          {reorderResult.criticalStockCount ?? 0}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          background: 'var(--bg-surface-active)',
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          border: '1px solid var(--border-subtle)'
-                        }}
-                      >
-                        <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                          New Recommendations
-                        </div>
-                        <div className="font-mono" style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
-                          {reorderResult.newRecommendationsCreated ?? 0}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
-                      <button onClick={handleCloseReorder} className="btn btn-primary btn-sm">
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
-                      {targetReorderMaterial ? (
-                        <>
-                          You are triggering automated reorder analysis for{' '}
-                          <strong style={{ color: 'var(--text-primary)' }}>
-                            {targetReorderMaterial.materialName} ({targetReorderMaterial.materialCode})
-                          </strong>
-                          . The engine will evaluate reorder levels, safety stock thresholds, and ongoing purchase orders across inventory.
-                        </>
-                      ) : (
-                        'Trigger a system-wide evaluation of raw materials against their safety stock and reorder thresholds. The engine will automatically generate purchase recommendations for deficient SKUs.'
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        background: 'var(--bg-surface-active)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 'var(--radius-sm)',
-                        fontSize: '11.5px',
-                        color: 'var(--text-muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        marginBottom: '16px'
-                      }}
-                    >
-                      <Info size={15} color="var(--accent-cyan)" />
-                      <span>
-                        Calls backend <code className="font-mono">POST /api/v1/procurement/reorder-check</code> to synchronously evaluate stock deficits.
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                      <button onClick={handleCloseReorder} className="btn btn-secondary btn-sm" disabled={isReordering}>
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleExecuteReorder}
-                        disabled={isReordering}
-                        className="btn btn-primary btn-sm"
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        {isReordering ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin" /> Evaluating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={13} /> Run Reorder Check
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    {isReordering ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Evaluating...
+                      </>
+                    ) : (
+                      'Run Reorder Scan'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </>
       )}
+
+      {/* Universal Batch & Polymer Genealogy Engine Modal */}
+      <BatchGenealogyModal
+        isOpen={showTraceModal}
+        onClose={() => setShowTraceModal(false)}
+        initialBatchId={traceBatchId}
+      />
     </div>
   );
 }

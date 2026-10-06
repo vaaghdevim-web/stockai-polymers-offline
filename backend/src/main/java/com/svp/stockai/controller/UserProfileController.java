@@ -24,6 +24,26 @@ public class UserProfileController {
     private final CustomUserDetailsService customUserDetailsService;
     private final PasswordEncoder passwordEncoder;
 
+    @GetMapping
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getAllUsers() {
+        List<Map<String, Object>> users = appUserRepository.findAll().stream()
+                .map(this::toProfile)
+                .toList();
+        return ResponseEntity.ok(users);
+    }
+
+    @PatchMapping("/{id}/toggle-status")
+    @Transactional
+    public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {
+        AppUser user = appUserRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        user.setIsActive(!Boolean.TRUE.equals(user.getIsActive()));
+        AppUser saved = appUserRepository.save(user);
+        return ResponseEntity.ok(toProfile(saved));
+    }
+
     @GetMapping("/me")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {

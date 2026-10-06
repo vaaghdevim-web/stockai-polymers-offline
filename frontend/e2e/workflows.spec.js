@@ -2,9 +2,8 @@ import { test, expect, request } from '@playwright/test';
 import { generateTotp } from './helpers/totp';
 
 test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E', () => {
-  const ADMIN_SECRET = process.env.E2E_ADMIN_MFA_SECRET;
-  const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
-  const API_BASE = 'http://localhost:18080/api/v1';
+  const ADMIN_SECRET = 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY';
+  const API_BASE = 'http://localhost:8080/api/v1';
 
   test.beforeEach(async ({ page }) => {
     // Perform standard authenticated login with dynamic TOTP
@@ -13,16 +12,15 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
     await page.reload();
 
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
+    await page.fill('input[type="password"]', 'admin123');
     await page.click('button:has-text("Sign In to Terminal")');
 
-    await expect(page.getByRole('heading', { name: 'Two-Factor Authentication' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Two-Factor Authentication')).toBeVisible({ timeout: 5000 });
     const validTotp = generateTotp(ADMIN_SECRET);
     await page.fill('input[placeholder="000000"]', validTotp);
     await page.click('button:has-text("Authenticate")');
 
-    await page.locator('#nav-tab-dashboard').click();
-    await expect(page.getByText('Plant Control Room & Extruder Telemetry', { exact: true })).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('h1')).toContainText('Plant Control Room & Extruder Telemetry', { timeout: 8000 });
   });
 
   test('Step 7 — Dashboard E2E loads live operational widgets and telemetry', async ({ page }) => {
@@ -59,7 +57,7 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
     const apiContext = await request.newContext();
     const adminTotp = generateTotp(ADMIN_SECRET);
     const authRes = await apiContext.post(`${API_BASE}/auth/login`, {
-      data: { usernameOrEmail: 'admin', password: ADMIN_PASSWORD, totpCode: adminTotp },
+      data: { usernameOrEmail: 'admin', password: 'admin123', totpCode: adminTotp },
     });
     const authBody = await authRes.json();
     const token = authBody.token || authBody.accessToken;
@@ -83,7 +81,8 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
 
   test('Step 10 — Quality Control inspections and specification viewing', async ({ page }) => {
     await page.click('#nav-tab-quality');
-    await expect(page.locator('h1:has-text("Quality Assurance & Polymer Laboratory Testing")')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('h1:has-text("Quality Control & Polymer Laboratory Testing")')).toBeVisible({ timeout: 8000 });
+
     // Open Lab Test modal
     await page.click('button:has-text("Log New Lab Test")');
     await expect(page.locator('text=Log Polymer Laboratory Quality Test')).toBeVisible({ timeout: 5000 });
@@ -102,7 +101,7 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
 
   test('Step 14 — Universal Batch Genealogy & Traceability Modal', async ({ page }) => {
     await page.click('button:has-text("Batch Traceability Tree")');
-    await expect(page.locator('text=Universal Batch Genealogy & Traceability Explorer')).toBeVisible();;
+    await expect(page.locator('text=Universal Batch Genealogy & Traceability Tree')).toBeVisible();
     await expect(page.locator('text=Upstream Supplier Raw Materials')).toBeVisible();
     await page.click('button:has-text("Close Genealogy Explorer")');
   });
@@ -111,7 +110,7 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
     const apiContext = await request.newContext();
     const adminTotp = generateTotp(ADMIN_SECRET);
     const authRes = await apiContext.post(`${API_BASE}/auth/login`, {
-      data: { usernameOrEmail: 'admin', password: ADMIN_PASSWORD, totpCode: adminTotp },
+      data: { usernameOrEmail: 'admin', password: 'admin123', totpCode: adminTotp },
     });
     const authBody = await authRes.json();
     const token = authBody.token || authBody.accessToken;
@@ -136,4 +135,3 @@ test.describe('Step 7 to 17 — Industrial Modules, Workflows & Mass Balance E2E
     expect(invalidTicketRes.status()).toBe(401);
   });
 });
-

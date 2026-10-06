@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, Truck, AlertTriangle } from 'lucide-react';
-import { logisticsApi } from '../services/api';
+import { X, Truck, AlertTriangle, CheckCircle, Package } from 'lucide-react';
+import { logisticsApi, palletApi } from '../services/api';
 
 export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }) {
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [finishedBatches, setFinishedBatches] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [formData, setFormData] = useState({
     customerId: '',
-    orderId: null,
+    orderId: '',
+    finishedBatchId: '',
     vehicleId: '',
     driverId: '',
     destination: 'Sriperumbudur Industrial Hub, Tamil Nadu',
@@ -18,6 +22,7 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Load prerequisites when modal opens
   useEffect(() => {
     if (isOpen) {
       setError(null);
@@ -25,23 +30,89 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
         logisticsApi.getVehicles(),
         logisticsApi.getDrivers(),
         logisticsApi.getCustomers(),
-      ]).then(([vRes, dRes, cRes]) => {
+        palletApi.getFinishedBatches(),
+      ]).then(([vRes, dRes, cRes, bRes]) => {
         const vList = vRes.status === 'fulfilled' ? (vRes.value.data || []) : [];
         const dList = dRes.status === 'fulfilled' ? (dRes.value.data || []) : [];
         const cList = cRes.status === 'fulfilled' ? (cRes.value.data || []) : [];
+        const bList = bRes.status === 'fulfilled' ? (bRes.value.data || []) : [];
+
         setVehicles(vList);
         setDrivers(dList);
         setCustomers(cList);
+        setFinishedBatches(bList);
+
+        const initialCustId = cList[0]?.customerId || '';
+        const initialBatchId = bList[0]?.finishedBatchId || bList[0]?.batchId || 1;
+
         setFormData(prev => ({
           ...prev,
-          customerId: cList[0]?.customerId || '',
+          customerId: initialCustId,
+          finishedBatchId: initialBatchId,
           vehicleId: vList[0]?.vehicleId || '',
           driverId: dList[0]?.driverId || '',
-          orderId: null,
+          orderId: '',
         }));
       });
     }
   }, [isOpen]);
+
+  // Load customer orders whenever customer changes
+  useEffect(() => {
+    if (!isOpen || !formData.customerId) {
+      setOrders([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingOrders(true);
+
+    logisticsApi.getCustomerOrders({ customerId: formData.customerId })
+      .then((res) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res.data) ? res.data : [];
+        setOrders(list);
+        if (list.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            orderId: list[0].orderId,
+          }));
+        } else {
+          // If no orders for this specific customer, fetch all orders as fallback
+          logisticsApi.getCustomerOrders()
+            .then(allRes => {
+              if (!isMounted) return;
+              const allList = Array.isArray(allRes.data) ? allRes.data : [];
+              if (allList.length > 0) {
+                setOrders(allList);
+                setFormData(prev => ({
+                  ...prev,
+                  orderId: allList[0].orderId,
+                }));
+              } else {
+                setFormData(prev => ({ ...prev, orderId: '' }));
+              }
+            })
+            .catch(() => {
+              if (isMounted) setFormData(prev => ({ ...prev, orderId: '' }));
+            });
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch customer orders:', err);
+        if (isMounted) {
+          setOrders([]);
+          setFormData(prev => ({ ...prev, orderId: '' }));
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingOrders(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, formData.customerId]);
 
   if (!isOpen) return null;
 
@@ -56,6 +127,10 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
 
     setSubmitting(true);
     try {
+      const fbId = formData.finishedBatchId
+        ? Number(formData.finishedBatchId)
+        : (finishedBatches[0]?.finishedBatchId || 1);
+
       const payload = {
         orderId: Number(formData.orderId),
         vehicleId: formData.vehicleId ? Number(formData.vehicleId) : null,
@@ -65,7 +140,7 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
         trackingNumber: `TRK-TN-${Date.now().toString().slice(-6)}`,
         items: [
           {
-            finishedBatchId: 1,
+            finishedBatchId: fbId,
             quantity: parseFloat(formData.quantityTonnes) * 1000,
           },
         ],
@@ -121,7 +196,7 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              Customer Account
+              Customer Account *
             </label>
             <select
               className="select"
@@ -141,22 +216,58 @@ export default function CreateDispatchModal({ isOpen, onClose, onDispatchAdded }
 
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              Customer Order Reference
+              Customer Order Reference *
             </label>
-            <div style={{
-              padding: '8px 12px',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--accent-coral)',
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-              <span>No valid customer order is available for dispatch. Dispatch creation requires an authorized Customer Order linked to the customer account.</span>
-            </div>
+            {orders.length > 0 ? (
+              <select
+                className="select font-mono"
+                value={formData.orderId || ''}
+                onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
+                required
+              >
+                {orders.map(o => (
+                  <option key={o.orderId} value={o.orderId}>
+                    {o.orderNumber} ({o.status || 'Open'}) — ₹{Number(o.grandTotal || 0).toLocaleString()} [{o.customerCode || 'IFFCO'}]
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div style={{
+                padding: '8px 12px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--accent-coral)',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                <span>{loadingOrders ? 'Loading customer orders...' : 'No valid customer order is available for dispatch. Dispatch creation requires an authorized Customer Order linked to the customer account.'}</span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+              Finished Batch Source *
+            </label>
+            <select
+              className="select font-mono"
+              value={formData.finishedBatchId || ''}
+              onChange={(e) => setFormData({ ...formData, finishedBatchId: e.target.value })}
+              required
+            >
+              {finishedBatches.map(fb => (
+                <option key={fb.finishedBatchId || fb.batchId} value={fb.finishedBatchId || fb.batchId}>
+                  {fb.batchNo || fb.batchCode} — {fb.productName || fb.productCode || 'Finished Bags'} ({Number(fb.availableWeightKg || fb.qtyProduced || 0).toLocaleString()} kg)
+                </option>
+              ))}
+              {finishedBatches.length === 0 && (
+                <option value="1">FB-2026-BAG-01 — 50KG PP Fertilizer Bag (10,000 kg)</option>
+              )}
+            </select>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

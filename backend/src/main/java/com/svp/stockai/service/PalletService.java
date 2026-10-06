@@ -221,4 +221,39 @@ public class PalletService {
                 .binId(pallet.getBin() != null ? pallet.getBin().getBinId() : null)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public java.util.List<PalletResponse> getAllPallets() {
+        return palletRepository.findAll().stream()
+                .map(pallet -> PalletResponse.builder()
+                        .palletId(pallet.getPalletId())
+                        .palletCode(pallet.getPalletCode())
+                        .barcode(pallet.getBarcode())
+                        .status(pallet.getStatus())
+                        .warehouseId(pallet.getWarehouse() != null ? pallet.getWarehouse().getWarehouseId() : null)
+                        .binId(pallet.getBin() != null ? pallet.getBin().getBinId() : null)
+                        .build())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<FinishedBatch> getFinishedBatches() {
+        return finishedBatchRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public FinishedBatch getFinishedBatch(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Finished batch identifier cannot be empty");
+        }
+        try {
+            Long id = Long.parseLong(identifier.trim());
+            return finishedBatchRepository.findById(id)
+                    .orElseGet(() -> finishedBatchRepository.findByBatchNo(identifier.trim())
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished batch not found: " + identifier)));
+        } catch (NumberFormatException ignored) {
+            return finishedBatchRepository.findByBatchNo(identifier.trim())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished batch not found: " + identifier));
+        }
+    }
 }

@@ -165,59 +165,59 @@ INSERT INTO app_role (role_name, is_active) VALUES ('DISPATCH_EXECUTIVE', TRUE);
 
 -- 8. Users (passwords are represented by BCrypt hashes below)
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'admin', 'admin@stockai.com', '$2a$12$57AYbZy8WUq1K8xl8r9j2.nmRTp3TPvCWLdhaCklfhCfEthZLM78e', 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY', TRUE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'admin', 'admin@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY', TRUE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'superadmin', 'superadmin@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'superadmin', 'superadmin@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'director', 'director@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'director', 'director@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'plantmgr', 'plantmgr@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'plantmgr', 'plantmgr@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'storemgr', 'storemgr@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'storemgr', 'storemgr@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'purchasemgr', 'purchasemgr@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'purchasemgr', 'purchasemgr@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'productionmgr', 'productionmgr@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'productionmgr', 'productionmgr@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'qualitymgr', 'qualitymgr@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'qualitymgr', 'qualitymgr@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'warehouseexec', 'warehouseexec@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'warehouseexec', 'warehouseexec@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'accountsteam', 'accountsteam@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'accountsteam', 'accountsteam@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'dispatchexec', 'dispatchexec@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'dispatchexec', 'dispatchexec@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'operator01', 'operator01@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'operator01', 'operator01@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'supervisor01', 'supervisor01@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'supervisor01', 'supervisor01@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'manager01', 'manager01@stockai.com', '$2a$12$Mj4iIHDB8TFj1kb..bqXqe.XuM81gD/nVP81yIVZK8OldBhlA2BES', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'manager01', 'manager01@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', NULL, FALSE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 -- 9. User Roles Mapping
@@ -517,8 +517,8 @@ VALUES ('Ramesh Kumar', 'DL-AP-16-2018-009847', CURRENT_DATE + INTERVAL '365' DA
 INSERT INTO driver (driver_name, license_number, license_expiry, phone, is_active)
 VALUES ('Suresh Reddy', 'DL-TS-09-2020-004512', CURRENT_DATE + INTERVAL '500' DAY, '+91 98490 67890', TRUE);
 
-INSERT INTO customer_order (customer_id, plant_id, order_number, order_date, required_date, status, subtotal, grand_total, created_by, created_at)
-SELECT c.customer_id, p.plant_id, 'ORD-2026-001', CURRENT_DATE, CURRENT_DATE + INTERVAL '7' DAY, 'Open', 150000.0000, 177000.0000, u.user_id, CURRENT_TIMESTAMP
+INSERT INTO customer_order (customer_id, plant_id, order_number, order_date, required_date, status, subtotal, discount_amount, tax_amount, grand_total, created_by, created_at)
+SELECT c.customer_id, p.plant_id, 'ORD-2026-001', CURRENT_DATE, CURRENT_DATE + INTERVAL '7' DAY, 'Open', 150000.0000, 0.0000, 27000.0000, 177000.0000, u.user_id, CURRENT_TIMESTAMP
 FROM customer c, plant p, app_user u
 WHERE c.customer_code = 'CUST-IFFCO-01' AND p.plant_name = 'Sri Vidha Polymers - Unit 1' AND u.user_name = 'supervisor01';
 

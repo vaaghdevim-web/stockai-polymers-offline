@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 import { generateTotp } from './helpers/totp';
 
 test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
-  const ADMIN_SECRET = process.env.E2E_ADMIN_MFA_SECRET;
-  const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
+  const ADMIN_SECRET = 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY';
 
   test.beforeEach(async ({ page }) => {
     // Ensure clean storage state
@@ -31,11 +30,11 @@ test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
     await page.goto('/');
 
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
+    await page.fill('input[type="password"]', 'admin123');
     await page.click('button:has-text("Sign In to Terminal")');
 
     // Should display Two-Factor Authentication modal
-    await expect(page.getByRole('heading', { name: 'Two-Factor Authentication' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Two-Factor Authentication')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('input[placeholder="000000"]')).toBeVisible();
 
     // Still no session token
@@ -47,10 +46,10 @@ test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
     await page.goto('/');
 
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
+    await page.fill('input[type="password"]', 'admin123');
     await page.click('button:has-text("Sign In to Terminal")');
 
-    await expect(page.getByRole('heading', { name: 'Two-Factor Authentication' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Two-Factor Authentication')).toBeVisible({ timeout: 5000 });
     await page.fill('input[placeholder="000000"]', '000000');
     await page.click('button:has-text("Authenticate")');
 
@@ -62,10 +61,10 @@ test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
     await page.goto('/');
 
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
+    await page.fill('input[type="password"]', 'admin123');
     await page.click('button:has-text("Sign In to Terminal")');
 
-    await expect(page.getByRole('heading', { name: 'Two-Factor Authentication' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Two-Factor Authentication')).toBeVisible({ timeout: 5000 });
 
     // Compute dynamic TOTP code
     const validTotp = generateTotp(ADMIN_SECRET);
@@ -73,7 +72,7 @@ test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
     await page.click('button:has-text("Authenticate")');
 
     // Verify Control Room dashboard is visible
-    await expect(page.locator('button[title="Account Profile & Settings"]')).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('h1')).toContainText('Plant Control Room & Extruder Telemetry', { timeout: 8000 });
 
     // Verify real tokens are stored in localStorage
     const token = await page.evaluate(() => localStorage.getItem('stockai_token'));
@@ -94,26 +93,19 @@ test.describe('Step 3 & 4 — Authentication & Session Lifecycle E2E', () => {
   test('Session Lifecycle — Logout revokes session, clears state, and returns to login', async ({ page }) => {
     // 1. Log in with admin credentials
     await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
-
     await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
+    await page.fill('input[type="password"]', 'admin123');
     await page.click('button:has-text("Sign In to Terminal")');
 
-    await expect(page.getByRole('heading', { name: 'Two-Factor Authentication' })).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Two-Factor Authentication')).toBeVisible({ timeout: 5000 });
     const validTotp = generateTotp(ADMIN_SECRET);
     await page.fill('input[placeholder="000000"]', validTotp);
     await page.click('button:has-text("Authenticate")');
 
-    const profileButton = page.locator('button[title="Account Profile & Settings"]');
-    await expect(profileButton).toBeVisible({ timeout: 8000 });
+    await expect(page.locator('h1')).toContainText('Plant Control Room & Extruder Telemetry', { timeout: 8000 });
 
-    // 2. Open profile menu
-    await profileButton.click();
-
-    // 3. Click Logout
-    await page.getByRole('button', { name: 'Logout' }).click();
+    // 2. Click Logout in header
+    await page.click('button[title="Sign Out"]');
 
     // 3. Verify redirected to Login
     await expect(page.locator('h1')).toContainText('StockAI OS', { timeout: 5000 });

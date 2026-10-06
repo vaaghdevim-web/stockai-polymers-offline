@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Plus, RefreshCw } from 'lucide-react';
+import { CheckCircle, AlertCircle, Plus, RefreshCw, Sparkles, GitBranch, Calculator } from 'lucide-react';
 import { productionApi } from '../services/api';
 import CreateWorkOrderModal from '../components/CreateWorkOrderModal';
+import CompoundingBomModal from '../components/CompoundingBomModal';
+import BatchGenealogyModal from '../components/BatchGenealogyModal';
 
 export default function Production() {
   const [runs, setRuns] = useState([]);
   const [boms, setBoms] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showBomModal, setShowBomModal] = useState(false);
+  const [showGenealogyModal, setShowGenealogyModal] = useState(false);
+  const [selectedGenealogyRun, setSelectedGenealogyRun] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stageModalData, setStageModalData] = useState(null);
@@ -94,6 +99,14 @@ export default function Production() {
             <RefreshCw size={13} /> Refresh
           </button>
           <button 
+            onClick={() => setShowBomModal(true)}
+            className="btn btn-secondary btn-sm"
+            style={{ color: '#8B5CF6', borderColor: '#DDD6FE', background: '#F5F3FF' }}
+            title="Formulation Recipes & Batch Calculator"
+          >
+            <Sparkles size={13} /> Compounding Recipes (BOM)
+          </button>
+          <button 
             onClick={() => setShowCreateModal(true)}
             className="btn btn-primary btn-sm"
           >
@@ -171,19 +184,33 @@ export default function Production() {
                     </span>
                   </td>
                   <td>
-                    {run.status !== 'Completed' && activeStage ? (
-                      <button 
-                        onClick={() => handleOpenCompleteModal(run, activeStage)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {run.status !== 'Completed' && activeStage ? (
+                        <button 
+                          onClick={() => handleOpenCompleteModal(run, activeStage)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--accent-cyan)' }}
+                        >
+                          Complete Stage ({activeStage.stageName || 'Seq ' + activeStage.sequenceNo}) →
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <CheckCircle size={13} /> Completed
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedGenealogyRun(run.productionNumber);
+                          setShowGenealogyModal(true);
+                        }}
                         className="btn btn-secondary btn-sm"
-                        style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--accent-cyan)' }}
+                        style={{ padding: '3px 8px', fontSize: '11px', color: '#0284C7', borderColor: '#BAE6FD', background: '#F0F9FF' }}
+                        title="Trace Batch Genealogy & Raw Lots"
                       >
-                        Complete Stage ({activeStage.stageName || 'Seq ' + activeStage.sequenceNo}) →
+                        <GitBranch size={12} /> Trace
                       </button>
-                    ) : (
-                      <span style={{ fontSize: '11px', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <CheckCircle size={13} /> Completed
-                      </span>
-                    )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -213,7 +240,13 @@ export default function Production() {
             </h3>
             <p style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Synchronized from Spring Boot Factory Service</p>
           </div>
-          <span className="badge badge-cyan">AUTHORITATIVE</span>
+          <button
+            onClick={() => setShowBomModal(true)}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: '12px', color: '#8B5CF6', borderColor: '#DDD6FE', background: '#F5F3FF' }}
+          >
+            <Sparkles size={13} /> Manage Recipes (+ Add / Calculate)
+          </button>
         </div>
 
         <div style={{
@@ -222,10 +255,14 @@ export default function Production() {
           gap: '10px'
         }}>
           {boms.slice(0, 4).map(bom => (
-            <div key={bom.bomId} style={{ background: 'var(--bg-surface)', padding: '10px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{bom.bomCode} — {bom.productName}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Version {bom.versionNumber} · Status: {bom.status}</div>
-              <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>Standard Batch: {bom.baseQuantityKg || 1000} kg</div>
+            <div 
+              key={bom.bomId || bom.compoundingBomId} 
+              onClick={() => setShowBomModal(true)}
+              style={{ background: 'var(--bg-surface)', padding: '10px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{bom.bomCode} {bom.productName ? `— ${bom.productName}` : ''}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Version {bom.version || bom.versionNumber || 'v1.0'} · Status: {bom.status}</div>
+              <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>Standard Batch: {bom.targetBatchWeightKg || bom.baseQuantityKg || 1000} kg</div>
             </div>
           ))}
           {boms.length === 0 && (
@@ -311,6 +348,20 @@ export default function Production() {
         onClose={() => setShowCreateModal(false)}
         onRunAdded={fetchProductionData}
         boms={boms}
+      />
+
+      {/* Compounding BOM Formulations & Batch Calculator Modal */}
+      <CompoundingBomModal
+        isOpen={showBomModal}
+        onClose={() => setShowBomModal(false)}
+        onBomsUpdated={fetchProductionData}
+      />
+
+      {/* Universal Batch & Production Lineage Traceability Modal */}
+      <BatchGenealogyModal
+        isOpen={showGenealogyModal}
+        onClose={() => setShowGenealogyModal(false)}
+        initialBatchId={selectedGenealogyRun}
       />
     </div>
   );

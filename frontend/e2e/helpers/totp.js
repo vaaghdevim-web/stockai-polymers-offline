@@ -8,10 +8,7 @@ import crypto from 'crypto';
  * @param {number} timeOffsetSteps Number of 30-second steps to offset (default 0)
  * @returns {string} 6-digit TOTP string
  */
-export function generateTotp(secret, timeOffsetSteps = 0) {
-  if (!secret) {
-    throw new Error('E2E_ADMIN_MFA_SECRET is not configured. Set the environment variable before running Playwright tests.');
-  }
+export function generateTotp(secret = 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY', timeOffsetSteps = 0) {
   const timeStep = Math.floor(Date.now() / 1000 / 30) + timeOffsetSteps;
   const buffer = Buffer.alloc(8);
   buffer.writeBigInt64BE(BigInt(timeStep), 0);

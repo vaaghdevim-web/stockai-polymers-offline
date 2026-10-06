@@ -1,12 +1,8 @@
 import { test, expect, request } from '@playwright/test';
 import { generateTotp } from './helpers/totp';
 
-const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD;
-const E2E_OPERATOR_PASSWORD = process.env.E2E_OPERATOR_PASSWORD;
-const E2E_ADMIN_MFA_SECRET = process.env.E2E_ADMIN_MFA_SECRET;
-
 test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
-  const API_BASE = 'http://localhost:18080/api/v1';
+  const API_BASE = 'http://localhost:8080/api/v1';
 
   let adminToken = '';
   let operatorToken = '';
@@ -15,11 +11,11 @@ test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
     const apiContext = await request.newContext();
 
     // 1. Authenticate Admin with dynamic TOTP
-    const adminTotp = generateTotp(E2E_ADMIN_MFA_SECRET);
+    const adminTotp = generateTotp('SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY');
     const adminRes = await apiContext.post(`${API_BASE}/auth/login`, {
       data: {
         usernameOrEmail: 'admin',
-        password: E2E_ADMIN_PASSWORD,
+        password: 'admin123',
         totpCode: adminTotp,
       },
     });
@@ -30,7 +26,7 @@ test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
     const operatorRes = await apiContext.post(`${API_BASE}/auth/login`, {
       data: {
         usernameOrEmail: 'operator01',
-        password: E2E_OPERATOR_PASSWORD,
+        password: 'operator123',
       },
     });
     const operatorBody = await operatorRes.json();
@@ -80,5 +76,3 @@ test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
     expect(ticketRes.status()).toBe(200);
   });
 });
-
-

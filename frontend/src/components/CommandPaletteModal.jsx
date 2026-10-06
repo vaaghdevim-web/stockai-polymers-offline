@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, Boxes, Cpu, FlaskConical, ArrowRight } from 'lucide-react';
 import { inventoryApi, productionApi, qualityApi } from '../services/api';
+import { isTabAllowed } from '../utils/rbac';
 
-export default function CommandPaletteModal({ isOpen, onClose, onNavigate }) {
+export default function CommandPaletteModal({ isOpen, onClose, onNavigate, userRoles = [] }) {
   const [query, setQuery] = useState('');
   const [rawMaterials, setRawMaterials] = useState([]);
   const [productionRuns, setProductionRuns] = useState([]);
@@ -54,6 +55,18 @@ export default function CommandPaletteModal({ isOpen, onClose, onNavigate }) {
     (item.productionRunNumber && item.productionRunNumber.toLowerCase().includes(query.toLowerCase()))
   );
 
+  const quickNavTabs = [
+    { id: 'dashboard', label: 'Control Room' },
+    { id: 'raw-materials', label: 'Raw Materials' },
+    { id: 'procurement', label: 'Procurement' },
+    { id: 'production', label: 'Production' },
+    { id: 'quality', label: 'Quality Control' },
+    { id: 'logistics', label: 'Logistics' },
+    { id: 'suppliers', label: 'Suppliers & Accounts' },
+    { id: 'admin', label: 'Admin Settings' },
+    { id: 'ai-copilot', label: 'AI Plant' },
+  ].filter(tab => isTabAllowed(tab.id, userRoles));
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div 
@@ -96,41 +109,34 @@ export default function CommandPaletteModal({ isOpen, onClose, onNavigate }) {
         </div>
 
         {/* Quick Navigation Items */}
-        <div style={{ padding: '8px 14px 0 14px' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {[
-              { id: 'dashboard', label: 'Control Room' },
-              { id: 'raw-materials', label: 'Raw Materials' },
-              { id: 'procurement', label: 'Procurement' },
-              { id: 'production', label: 'Production' },
-              { id: 'quality', label: 'Quality Control' },
-              { id: 'logistics', label: 'Logistics' },
-              { id: 'suppliers', label: 'Suppliers & Accounts' },
-              { id: 'admin', label: 'Admin Settings' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => { onNavigate(tab.id); onClose(); }}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: 'var(--radius-xs)',
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  fontSize: '11px',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer'
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {quickNavTabs.length > 0 && (
+          <div style={{ padding: '8px 14px 0 14px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {quickNavTabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => { onNavigate(tab.id); onClose(); }}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Results Stream */}
         <div style={{ padding: '10px 14px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Raw Materials Section */}
-          {filteredRaw.length > 0 && (
+          {filteredRaw.length > 0 && isTabAllowed('raw-materials', userRoles) && (
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px', fontFamily: 'var(--font-mono)' }}>
                 Raw Material Inventory ({filteredRaw.length})
@@ -172,7 +178,7 @@ export default function CommandPaletteModal({ isOpen, onClose, onNavigate }) {
           )}
 
           {/* Production Runs */}
-          {filteredRuns.length > 0 && (
+          {filteredRuns.length > 0 && isTabAllowed('production', userRoles) && (
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px', fontFamily: 'var(--font-mono)' }}>
                 Production Work Orders ({filteredRuns.length})
@@ -212,7 +218,7 @@ export default function CommandPaletteModal({ isOpen, onClose, onNavigate }) {
           )}
 
           {/* QC Inspections */}
-          {filteredQC.length > 0 && (
+          {filteredQC.length > 0 && isTabAllowed('quality', userRoles) && (
             <div>
               <div style={{ fontSize: '10.5px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px', fontFamily: 'var(--font-mono)' }}>
                 Quality Lab Tests ({filteredQC.length})

@@ -31,8 +31,26 @@ public class PalletController {
                 .body(response);
     }
 
-    @GetMapping("/{identifier}")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN', 'SUPERVISOR')")
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<java.util.List<PalletResponse>> getAllPallets() {
+        return ResponseEntity.ok(palletService.getAllPallets());
+    }
+
+    @GetMapping("/finished-batches")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<java.util.List<com.svp.stockai.entity.FinishedBatch>> getFinishedBatches() {
+        return ResponseEntity.ok(palletService.getFinishedBatches());
+    }
+
+    @GetMapping("/finished-batches/{identifier}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<com.svp.stockai.entity.FinishedBatch> getFinishedBatch(@PathVariable String identifier) {
+        return ResponseEntity.ok(palletService.getFinishedBatch(identifier));
+    }
+
+    @GetMapping("/{identifier:[A-Za-z0-9\\-_]+}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PalletResponse> getPallet(@PathVariable String identifier) {
         PalletResponse response = palletService.getPalletByIdentifier(identifier);
         return ResponseEntity.ok(response);

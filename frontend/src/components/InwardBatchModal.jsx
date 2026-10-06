@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Boxes, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Boxes, AlertTriangle, CheckCircle2, ShieldCheck, Warehouse, Layers } from 'lucide-react';
 import { logisticsApi } from '../services/api';
 import { receiveRawMaterial, extractErrorMessage } from '../services/domain/rawMaterialsService';
 import BinSelect from './BinSelect';
@@ -46,13 +46,15 @@ export default function InwardBatchModal({ isOpen, onClose, onBatchAdded, rawMat
 
   if (!isOpen) return null;
 
+  const parsedQty = parseFloat(quantityKg) || 0;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
     if (!binId) {
-      setError('Please select an active storage bin location.');
+      setError('Please select an active storage bin location with available capacity.');
       return;
     }
 
@@ -103,13 +105,13 @@ export default function InwardBatchModal({ isOpen, onClose, onBatchAdded, rawMat
       };
 
       const res = await receiveRawMaterial(payload);
-      setSuccess(`Inward GRN recorded successfully! Batch #${res.data?.batchNo || batchNo} registered in inventory.`);
+      setSuccess(`Inward GRN recorded successfully! Batch #${res.data?.batchNo || batchNo} registered in bin '${selectedBin?.binCode || binId}'.`);
       setTimeout(() => {
         if (onBatchAdded) {
           onBatchAdded();
         }
         onClose();
-      }, 1000);
+      }, 1200);
     } catch (err) {
       const msg = extractErrorMessage(err, 'Failed to record inward receipt.');
       setError(msg);
@@ -119,235 +121,301 @@ export default function InwardBatchModal({ isOpen, onClose, onBatchAdded, rawMat
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Boxes size={18} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Log Inward Raw Material Batch (GRN)
-            </h3>
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1000 }}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '760px',
+          width: '95%',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: 0,
+          overflow: 'hidden',
+          borderRadius: '12px',
+          background: '#FFFFFF',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)'
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: '16px 22px',
+            borderBottom: '1px solid var(--border-default)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: '#0B1117',
+            color: '#FFFFFF',
+            flexShrink: 0
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                background: '#0284C7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF'
+              }}
+            >
+              <Boxes size={18} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
+                Inward Raw Material Batch (GRN)
+              </h3>
+              <div style={{ fontSize: '11px', color: '#94A3B8' }}>
+                Plant 1 · Ungutur Warehouse Receipt & Storage Allocation
+              </div>
+            </div>
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
-            <X size={16} />
+
+          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ color: '#94A3B8', padding: '6px' }}>
+            <X size={18} />
           </button>
         </div>
 
-        {error && (
-          <div style={{
-            padding: '8px 12px',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--accent-coral)',
-            fontSize: '12px',
-            marginBottom: '12px',
+        {/* Scrollable Form Body */}
+        <div
+          style={{
+            padding: '20px 24px',
+            overflowY: 'auto',
+            flex: 1,
             display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <AlertTriangle size={15} />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {success && (
-          <div style={{
-            padding: '8px 12px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.35)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--accent-emerald)',
-            fontSize: '12px',
-            marginBottom: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <CheckCircle2 size={15} />
-            <span>{success}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Raw Material SKU
-              </label>
-              <select
-                className="select"
-                value={selectedMaterialId}
-                onChange={(e) => setSelectedMaterialId(e.target.value)}
-              >
-                {rawMaterials.map((rm) => (
-                  <option key={rm.materialId} value={rm.materialId}>
-                    {rm.materialCode} — {rm.materialName}
-                  </option>
-                ))}
-                {rawMaterials.length === 0 && (
-                  <option value={1}>RM-001 (Polymer Resin)</option>
-                )}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Vendor / Supplier
-              </label>
-              <select
-                className="select"
-                value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-              >
-                <option value="">-- Direct Receipt / Internal --</option>
-                {suppliers.map((s) => (
-                  <option key={s.supplierId} value={s.supplierId}>
-                    {s.supplierName} ({s.gstNo || 'Active'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Internal Batch Number
-              </label>
-              <input
-                type="text"
-                required
-                className="input font-mono"
-                value={batchNo}
-                onChange={(e) => setBatchNo(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Supplier Lot Number
-              </label>
-              <input
-                type="text"
-                required
-                className="input font-mono"
-                value={lotNumber}
-                onChange={(e) => setLotNumber(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Quantity Received (kg)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                required
-                className="input font-mono"
-                value={quantityKg}
-                onChange={(e) => setQuantityKg(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-                Unit Cost (₹/kg)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                className="input font-mono"
-                value={unitCost}
-                onChange={(e) => setUnitCost(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Dynamic Backend-Driven Warehouse & Bin Selector */}
-          <BinSelect
-            value={binId}
-            onChange={(selectedBinId, binObj) => {
-              setBinId(selectedBinId);
-              setSelectedBin(binObj);
-            }}
-            warehouseLabel="Warehouse"
-            binLabel="Storage Bin Location"
-            required
-          />
-          {selectedBin?.capacityKg && (
+            flexDirection: 'column',
+            gap: '16px'
+          }}
+        >
+          {error && (
             <div
               style={{
-                fontSize: '11px',
-                marginTop: '-4px',
-                padding: '6px 10px',
-                background: selectedBin.isOverCapacity ? 'rgba(239, 68, 68, 0.12)' : 'var(--bg-surface-active)',
-                border: '1px solid',
-                borderColor: selectedBin.isOverCapacity ? 'rgba(239, 68, 68, 0.3)' : 'var(--border-subtle)',
-                borderRadius: 'var(--radius-xs)',
+                padding: '10px 14px',
+                background: '#FEF2F2',
+                border: '1px solid #FECACA',
+                borderRadius: '6px',
+                color: '#B91C1C',
+                fontSize: '12.5px',
                 display: 'flex',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '6px'
+                gap: '8px'
               }}
             >
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Cap: </span>
-                <strong className="font-mono" style={{ color: 'var(--text-primary)' }}>{Number(selectedBin.capacityKg).toLocaleString()} kg</strong>
-                {selectedBin.currentStockKg !== undefined && (
-                  <>
-                    <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>Stored: </span>
-                    <strong className="font-mono" style={{ color: selectedBin.isOverCapacity ? 'var(--accent-coral)' : 'var(--text-secondary)' }}>
-                      {Number(selectedBin.currentStockKg).toLocaleString()} kg
-                    </strong>
-                  </>
-                )}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Avail: </span>
-                <strong className="font-mono" style={{ color: selectedBin.isOverCapacity ? 'var(--accent-coral)' : 'var(--accent-emerald)' }}>
-                  {selectedBin.isOverCapacity ? '0 kg' : `${Number(selectedBin.availableCapacityKg ?? selectedBin.capacityKg).toLocaleString()} kg`}
-                </strong>
-                {selectedBin.isOverCapacity ? (
-                  <span className="badge badge-coral" style={{ fontSize: '9px', padding: '1px 5px' }}>FULL / OVER</span>
-                ) : (
-                  <span className="badge badge-emerald" style={{ fontSize: '9px', padding: '1px 5px' }}>AVAILABLE</span>
-                )}
-              </div>
+              <AlertTriangle size={16} />
+              <span>{error}</span>
             </div>
           )}
 
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              Initial Quality Status
-            </label>
-            <select
-              className="select"
-              value={qualityStatus}
-              onChange={(e) => setQualityStatus(e.target.value)}
+          {success && (
+            <div
+              style={{
+                padding: '10px 14px',
+                background: '#ECFDF5',
+                border: '1px solid #A7F3D0',
+                borderRadius: '6px',
+                color: '#047857',
+                fontSize: '12.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              <option value="Available">Available — Passed initial inspection / ready for production</option>
-              <option value="Hold">Hold — Pending verification / temporarily held</option>
-              <option value="Quarantine">Quarantine — Quality concern / held for analysis</option>
-            </select>
+              <CheckCircle2 size={16} />
+              <span>{success}</span>
+            </div>
+          )}
+
+          <form id="inward-batch-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* 1. Material & Vendor */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Raw Material SKU / Grade *
+                </label>
+                <select
+                  className="select"
+                  value={selectedMaterialId}
+                  onChange={(e) => setSelectedMaterialId(e.target.value)}
+                  style={{ fontSize: '13px', fontWeight: '500' }}
+                >
+                  {rawMaterials.map((rm) => (
+                    <option key={rm.materialId} value={rm.materialId}>
+                      {rm.materialCode} — {rm.materialName} ({rm.category || 'Polymer'})
+                    </option>
+                  ))}
+                  {rawMaterials.length === 0 && (
+                    <option value={1}>RM-001 (Polymer Resin Grade)</option>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Vendor / Supplier
+                </label>
+                <select
+                  className="select"
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}
+                  style={{ fontSize: '13px' }}
+                >
+                  <option value="">-- Direct Receipt / Internal Transfer --</option>
+                  {suppliers.map((s) => (
+                    <option key={s.supplierId} value={s.supplierId}>
+                      {s.supplierName} ({s.gstNo || 'Active Supplier'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 2. Batch & Lot Identifiers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Internal Batch Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="input font-mono"
+                  value={batchNo}
+                  onChange={(e) => setBatchNo(e.target.value)}
+                  style={{ fontSize: '13px', fontWeight: '700' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Supplier Lot Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="input font-mono"
+                  value={lotNumber}
+                  onChange={(e) => setLotNumber(e.target.value)}
+                  style={{ fontSize: '13px', fontWeight: '600' }}
+                />
+              </div>
+            </div>
+
+            {/* 3. Quantity & Unit Cost */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Quantity Received (kg) *
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  required
+                  className="input font-mono"
+                  value={quantityKg}
+                  onChange={(e) => setQuantityKg(e.target.value)}
+                  style={{ fontSize: '13px', fontWeight: '700', color: '#0284C7' }}
+                  placeholder="e.g. 5000"
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Unit Cost (₹ / kg)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  className="input font-mono"
+                  value={unitCost}
+                  onChange={(e) => setUnitCost(e.target.value)}
+                  style={{ fontSize: '13px' }}
+                />
+              </div>
+            </div>
+
+            {/* 4. Warehouse & Storage Bin Availability Visualizer */}
+            <div
+              style={{
+                border: '1px solid var(--border-default)',
+                borderRadius: '8px',
+                padding: '14px',
+                background: '#FFFFFF'
+              }}
+            >
+              <BinSelect
+                value={binId}
+                onChange={(selectedBinId, binObj) => {
+                  setBinId(selectedBinId);
+                  setSelectedBin(binObj);
+                }}
+                incomingQty={parsedQty}
+                warehouseLabel="Target Warehouse / Silo Facility"
+                binLabel="Storage Bin Location & Space Availability"
+                required
+              />
+            </div>
+
+            {/* 5. Quality Inspection Status */}
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-secondary)', display: 'block', marginBottom: '5px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                Initial Quality Classification
+              </label>
+              <select
+                className="select"
+                value={qualityStatus}
+                onChange={(e) => setQualityStatus(e.target.value)}
+                style={{ fontSize: '12.5px' }}
+              >
+                <option value="Available">Available — Passed initial incoming inspection / ready for immediate production</option>
+                <option value="Hold">Hold — Pending lab melt flow index (MFI) & density verification</option>
+                <option value="Quarantine">Quarantine — Quality alert / isolation pending QA sign-off</option>
+              </select>
+            </div>
+          </form>
+        </div>
+
+        {/* Modal Footer */}
+        <div
+          style={{
+            padding: '14px 24px',
+            background: '#F8FAFC',
+            borderTop: '1px solid var(--border-default)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0
+          }}
+        >
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {selectedBin ? (
+              <span>Storage Target: <strong className="font-mono" style={{ color: '#0284C7' }}>{selectedBin.binCode}</strong> ({Number(selectedBin.availableCapacityKg).toLocaleString()} kg free)</span>
+            ) : (
+              <span>Please select a storage bin location with space</span>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-            <button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
+            <button
+              type="submit"
+              form="inward-batch-form"
+              disabled={submitting || !binId}
+              className="btn btn-primary btn-sm"
+            >
               {submitting ? 'Recording GRN...' : 'Record Inward Batch'}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

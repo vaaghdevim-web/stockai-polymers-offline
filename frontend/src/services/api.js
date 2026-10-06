@@ -141,6 +141,7 @@ export const authApi = {
     return api.post('/auth/refresh', payload);
   },
   logout: () => api.post('/auth/logout'),
+  changePassword: (data) => api.put('/auth/change-password', data),
 };
 
 // 2. IoT Telemetry & Stream Tickets
@@ -170,7 +171,35 @@ export const inventoryApi = {
 export const warehouseApi = {
   getWarehouses: (params) => api.get('/warehouses', { params }),
   getWarehouseById: (id) => api.get(`/warehouses/${id}`),
+  createWarehouse: (data) => api.post('/warehouses', data),
+  getPlants: () => api.get('/warehouses/plants'),
+  getRacksByWarehouseId: (warehouseId) => api.get(`/warehouses/${warehouseId}/racks`),
+  createRack: (warehouseId, data) => api.post(`/warehouses/${warehouseId}/racks`, data),
+  updateRack: (rackId, data) => api.put(`/warehouses/racks/${rackId}`, data),
+  deleteRack: (rackId) => api.delete(`/warehouses/racks/${rackId}`),
+  getShelvesByRackId: (rackId) => api.get(`/warehouses/racks/${rackId}/shelves`),
+  createShelf: (rackId, data) => api.post(`/warehouses/racks/${rackId}/shelves`, data),
+  updateShelf: (shelfId, data) => api.put(`/warehouses/shelves/${shelfId}`, data),
+  deleteShelf: (shelfId) => api.delete(`/warehouses/shelves/${shelfId}`),
+  createBin: (shelfId, data) => api.post(`/warehouses/shelves/${shelfId}/bins`, data),
+  updateBin: (binId, data) => api.put(`/warehouses/bins/${binId}`, data),
+  deleteBin: (binId, force = false) => api.delete(`/warehouses/bins/${binId}`, { params: force ? { force: true } : {} }),
+  clearBinStock: (binId) => api.post(`/warehouses/bins/${binId}/clear-stock`),
+  clearAllWarehouseStock: (warehouseId) => api.post(`/warehouses/${warehouseId}/clear-all-stock`),
+  getStorageTree: (warehouseId) => api.get(`/warehouses/${warehouseId}/storage-tree`),
   getBinsByWarehouseId: (warehouseId) => api.get(`/warehouses/${warehouseId}/bins`),
+  getWarehouseBins: (warehouseId) => api.get(`/warehouses/${warehouseId}/bins`),
+  getBinByCode: (binCode) => api.get(`/warehouses/bins/${binCode}`),
+};
+
+// 3b. Enterprise Roles & RBAC Management
+export const roleApi = {
+  getRoles: () => api.get('/roles'),
+  getRoleById: (id) => api.get(`/roles/${id}`),
+  createRole: (data) => api.post('/roles', data),
+  updateRole: (id, data) => api.put(`/roles/${id}`, data),
+  deleteRole: (id) => api.delete(`/roles/${id}`),
+  getPermissions: () => api.get('/roles/permissions'),
 };
 
 // 3b. Stock Transfers (Domain Module)
@@ -183,8 +212,12 @@ export const stockTransferApi = {
 
 // 3c. Supplier Directory (Domain Module)
 export const supplierApi = {
-  getSuppliers: (activeOnly = true) => api.get('/suppliers', { params: typeof activeOnly === 'boolean' ? { activeOnly } : activeOnly }),
+  getSuppliers: (activeOnly = false) => api.get('/suppliers', { params: typeof activeOnly === 'boolean' ? { activeOnly } : activeOnly }),
   getSupplierById: (id) => api.get(`/suppliers/${id}`),
+  createSupplier: (data) => api.post('/suppliers', data),
+  updateSupplier: (id, data) => api.put(`/suppliers/${id}`, data),
+  deleteSupplier: (id, permanent = false) => api.delete(`/suppliers/${id}`, { params: { permanent } }),
+  toggleSupplierStatus: (id) => api.patch(`/suppliers/${id}/toggle-status`),
 };
 
 // 4. Factory Compounding & Production
@@ -198,6 +231,14 @@ export const productionApi = {
   completeStage: (runId, stageId, data) => api.post(`/production-runs/${runId}/stages/${stageId}/complete`, data),
   getBOMs: (status) => api.get('/factory/compounding/boms', { params: { status } }),
   getBOMById: (id) => api.get(`/factory/compounding/boms/${id}`),
+  createBOM: (data) => api.post('/factory/compounding/boms', data),
+  createBom: (data) => api.post('/factory/compounding/boms', data),
+  activateBOM: (id) => api.patch(`/factory/compounding/boms/${id}/activate`),
+  activateBom: (id) => api.patch(`/factory/compounding/boms/${id}/activate`),
+  retireBOM: (id) => api.patch(`/factory/compounding/boms/${id}/retire`),
+  retireBom: (id) => api.patch(`/factory/compounding/boms/${id}/retire`),
+  calculateBOMRequirements: (bomId, batchWeightKg) =>
+    api.get(`/factory/compounding/boms/${bomId}/calculate-requirements`, { params: { batchWeightKg } }),
   calculateBomRequirements: (bomId, batchWeightKg) =>
     api.get(`/factory/compounding/boms/${bomId}/calculate-requirements`, { params: { batchWeightKg } }),
   getMachines: () => api.get('/machines'),
@@ -218,12 +259,23 @@ export const qualityApi = {
 };
 
 // 6. Warehousing, Pallets & Dispatches
+export const palletApi = {
+  getAll: () => api.get('/pallets'),
+  getPallet: (identifier) => api.get(`/pallets/${identifier}`),
+  createPallet: (data) => api.post('/pallets', data),
+  getFinishedBatches: () => api.get('/pallets/finished-batches'),
+  getFinishedBatch: (identifier) => api.get(`/pallets/finished-batches/${encodeURIComponent(identifier)}`),
+};
+
 export const logisticsApi = {
   getWarehouses: (params) => api.get('/warehouses', { params }),
   getWarehouseById: (id) => api.get(`/warehouses/${id}`),
   getWarehouseBins: (warehouseId) => api.get(`/warehouses/${warehouseId}/bins`),
   getPallet: (identifier) => api.get(`/pallets/${identifier}`),
+  getPallets: () => api.get('/pallets'),
   createPallet: (data) => api.post('/pallets', data),
+  getFinishedBatches: () => api.get('/pallets/finished-batches'),
+  getFinishedBatch: (identifier) => api.get(`/pallets/finished-batches/${encodeURIComponent(identifier)}`),
   getDispatches: (params) => api.get('/dispatches', { params }),
   getDispatchById: (id) => api.get(`/dispatches/${id}`),
   createDispatch: (data) => api.post('/dispatches', data),
@@ -233,6 +285,8 @@ export const logisticsApi = {
   getVehicles: () => api.get('/vehicles'),
   getDrivers: () => api.get('/drivers'),
   getCustomers: () => api.get('/customers'),
+  getCustomerOrders: (params) => api.get('/customers/orders', { params }),
+  getCustomerOrdersByCustomer: (customerId) => api.get(`/customers/${customerId}/orders`),
   getSuppliers: (activeOnly = true) => api.get('/suppliers', { params: typeof activeOnly === 'boolean' ? { activeOnly } : activeOnly }),
 };
 
@@ -260,4 +314,3 @@ export const aiApi = {
 };
 
 export default api;
-

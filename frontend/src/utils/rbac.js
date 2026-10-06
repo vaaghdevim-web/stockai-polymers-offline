@@ -9,8 +9,18 @@ export const ROLE_CONFIGS = {
     displayName: 'Super Admin',
     defaultTab: 'admin',
     defaultPath: '/admin/settings',
-    landingDescription: 'System Administration & Security Settings',
+    landingDescription: 'Root System Administration & Enterprise Role Management',
+    badge: 'SUPER ADMIN',
+    allowedTabs: ['dashboard', 'raw-materials', 'procurement', 'production', 'quality', 'logistics', 'suppliers', 'admin', 'ai-copilot'],
+  },
+  ROLE_ADMIN: {
+    roleName: 'ADMIN',
+    displayName: 'Admin',
+    defaultTab: 'admin',
+    defaultPath: '/admin/settings',
+    landingDescription: 'Plant Administration & Operations Management',
     badge: 'ADMIN',
+    allowedTabs: ['dashboard', 'raw-materials', 'procurement', 'production', 'quality', 'logistics', 'suppliers', 'admin', 'ai-copilot'],
   },
   ROLE_FACTORY_DIRECTOR: {
     roleName: 'FACTORY_DIRECTOR',
@@ -19,6 +29,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/dashboard/executive',
     landingDescription: 'Executive Plant Overview & KPI Dashboard',
     badge: 'DIRECTOR',
+    allowedTabs: ['dashboard', 'procurement', 'production', 'suppliers', 'ai-copilot'],
   },
   ROLE_PLANT_MANAGER: {
     roleName: 'PLANT_MANAGER',
@@ -27,6 +38,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/dashboard/ai-inventory',
     landingDescription: 'AI Inventory & Operations Dashboard',
     badge: 'PLANT MGR',
+    allowedTabs: ['dashboard', 'raw-materials', 'procurement', 'production', 'quality', 'logistics', 'ai-copilot'],
   },
   ROLE_STORE_MANAGER: {
     roleName: 'STORE_MANAGER',
@@ -35,6 +47,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/inventory/raw-materials',
     landingDescription: 'Raw Material & Finished Goods Management',
     badge: 'STORE MGR',
+    allowedTabs: ['raw-materials', 'procurement', 'logistics'],
   },
   ROLE_PURCHASE_MANAGER: {
     roleName: 'PURCHASE_MANAGER',
@@ -43,6 +56,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/procurement/recommendations',
     landingDescription: 'Smart Purchase Recommendations & Reorder Scans',
     badge: 'PURCHASE',
+    allowedTabs: ['procurement', 'raw-materials', 'suppliers', 'ai-copilot'],
   },
   ROLE_PRODUCTION_MANAGER: {
     roleName: 'PRODUCTION_MANAGER',
@@ -51,6 +65,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/production/flow',
     landingDescription: 'Production Flow & Work Order Management',
     badge: 'PROD MGR',
+    allowedTabs: ['production', 'dashboard', 'raw-materials', 'quality', 'ai-copilot'],
   },
   ROLE_QUALITY_MANAGER: {
     roleName: 'QUALITY_MANAGER',
@@ -59,6 +74,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/qc/inspections',
     landingDescription: 'Quality Control & ASTM Lab Inspections',
     badge: 'QC MGR',
+    allowedTabs: ['quality', 'production', 'raw-materials'],
   },
   ROLE_WAREHOUSE_EXECUTIVE: {
     roleName: 'WAREHOUSE_EXECUTIVE',
@@ -67,6 +83,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/warehouse/putaway',
     landingDescription: 'Warehouse Putaway & Mobile Scan Operations',
     badge: 'WAREHOUSE',
+    allowedTabs: ['logistics', 'raw-materials'],
   },
   ROLE_ACCOUNTS_TEAM: {
     roleName: 'ACCOUNTS_TEAM',
@@ -75,6 +92,7 @@ export const ROLE_CONFIGS = {
     defaultPath: '/suppliers/management',
     landingDescription: 'Supplier Directory & Payments Management',
     badge: 'ACCOUNTS',
+    allowedTabs: ['suppliers', 'procurement'],
   },
   ROLE_DISPATCH_EXECUTIVE: {
     roleName: 'DISPATCH_EXECUTIVE',
@@ -83,6 +101,34 @@ export const ROLE_CONFIGS = {
     defaultPath: '/logistics/dispatches',
     landingDescription: 'Dispatch Management & Gate Pass Manifests',
     badge: 'DISPATCH',
+    allowedTabs: ['logistics', 'dashboard'],
+  },
+  ROLE_MANAGER: {
+    roleName: 'MANAGER',
+    displayName: 'Manager',
+    defaultTab: 'dashboard',
+    defaultPath: '/dashboard',
+    landingDescription: 'Operations Dashboard',
+    badge: 'MANAGER',
+    allowedTabs: ['dashboard', 'raw-materials', 'procurement', 'production', 'quality', 'logistics', 'ai-copilot'],
+  },
+  ROLE_SUPERVISOR: {
+    roleName: 'SUPERVISOR',
+    displayName: 'Supervisor',
+    defaultTab: 'production',
+    defaultPath: '/production/flow',
+    landingDescription: 'Production Flow & Shift Tracking',
+    badge: 'SUPERVISOR',
+    allowedTabs: ['production', 'dashboard', 'raw-materials', 'quality'],
+  },
+  ROLE_OPERATOR: {
+    roleName: 'OPERATOR',
+    displayName: 'Operator',
+    defaultTab: 'production',
+    defaultPath: '/production/flow',
+    landingDescription: 'Production & Machine Operations',
+    badge: 'OPERATOR',
+    allowedTabs: ['production', 'raw-materials'],
   },
 };
 
@@ -111,14 +157,7 @@ const ROLE_PRIORITY = [
  */
 export function getPrimaryRoleConfig(roles = []) {
   if (!roles || !Array.isArray(roles) || roles.length === 0) {
-    return {
-      roleName: 'OPERATOR',
-      displayName: 'Operator',
-      defaultTab: 'dashboard',
-      defaultPath: '/dashboard',
-      landingDescription: 'Operations Dashboard',
-      badge: 'OPERATOR',
-    };
+    return ROLE_CONFIGS.ROLE_OPERATOR;
   }
 
   // Normalize roles (ensure ROLE_ prefix)
@@ -137,22 +176,15 @@ export function getPrimaryRoleConfig(roles = []) {
         return ROLE_CONFIGS.ROLE_PLANT_MANAGER;
       }
       if (prioritizedRole === 'ROLE_SUPERVISOR') {
-        return ROLE_CONFIGS.ROLE_QUALITY_MANAGER;
+        return ROLE_CONFIGS.ROLE_SUPERVISOR;
       }
       if (prioritizedRole === 'ROLE_OPERATOR') {
-        return ROLE_CONFIGS.ROLE_WAREHOUSE_EXECUTIVE;
+        return ROLE_CONFIGS.ROLE_OPERATOR;
       }
     }
   }
 
-  return {
-    roleName: 'OPERATOR',
-    displayName: 'Operator',
-    defaultTab: 'dashboard',
-    defaultPath: '/dashboard',
-    landingDescription: 'Control Room Dashboard',
-    badge: 'OPERATOR',
-  };
+  return ROLE_CONFIGS.ROLE_OPERATOR;
 }
 
 /**
@@ -163,4 +195,67 @@ export function getPrimaryRoleConfig(roles = []) {
 export function getDefaultLandingTab(roles = []) {
   const config = getPrimaryRoleConfig(roles);
   return config.defaultTab;
+}
+
+/**
+ * Normalizes an arbitrary tab or route identifier to its primary sidebar module tab id
+ * @param {string} tab 
+ * @returns {string} canonical module id
+ */
+export function normalizeModuleTab(tab) {
+  if (!tab) return 'dashboard';
+  if (tab === 'dashboard-executive' || tab === 'dashboard-ai') return 'dashboard';
+  if (tab === 'warehouse' || tab === 'stock-transfers') return 'logistics';
+  return tab;
+}
+
+/**
+ * Returns the unified set of allowed tab IDs across all roles assigned to the user
+ * @param {string[]} roles 
+ * @returns {string[]} array of unique tab IDs
+ */
+export function getAllowedTabs(roles = []) {
+  if (!roles || !Array.isArray(roles) || roles.length === 0) {
+    return ['production', 'raw-materials'];
+  }
+
+  const normalized = roles.map(r => r.startsWith('ROLE_') ? r : `ROLE_${r}`);
+  const tabsSet = new Set();
+
+  for (const roleKey of normalized) {
+    const config = ROLE_CONFIGS[roleKey];
+    if (config && Array.isArray(config.allowedTabs)) {
+      config.allowedTabs.forEach(t => tabsSet.add(t));
+    } else {
+      // Fallback for base roles
+      if (roleKey === 'ROLE_ADMIN' || roleKey === 'ROLE_SUPER_ADMIN') {
+        ROLE_CONFIGS.ROLE_SUPER_ADMIN.allowedTabs.forEach(t => tabsSet.add(t));
+      } else if (roleKey === 'ROLE_MANAGER') {
+        ROLE_CONFIGS.ROLE_PLANT_MANAGER.allowedTabs.forEach(t => tabsSet.add(t));
+      } else if (roleKey === 'ROLE_SUPERVISOR') {
+        ROLE_CONFIGS.ROLE_SUPERVISOR.allowedTabs.forEach(t => tabsSet.add(t));
+      } else if (roleKey === 'ROLE_OPERATOR') {
+        ROLE_CONFIGS.ROLE_OPERATOR.allowedTabs.forEach(t => tabsSet.add(t));
+      }
+    }
+  }
+
+  // If set is still empty (unknown role), default to least-privilege operator set
+  if (tabsSet.size === 0) {
+    return ['production', 'raw-materials'];
+  }
+
+  return Array.from(tabsSet);
+}
+
+/**
+ * Checks whether a given tab/page is permitted for the user's roles
+ * @param {string} tab 
+ * @param {string[]} roles 
+ * @returns {boolean}
+ */
+export function isTabAllowed(tab, roles = []) {
+  const canonical = normalizeModuleTab(tab);
+  const allowed = getAllowedTabs(roles);
+  return allowed.includes(canonical);
 }
