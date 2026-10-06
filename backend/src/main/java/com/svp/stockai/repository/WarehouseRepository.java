@@ -9,7 +9,12 @@ import java.util.List;
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
 
+    List<Warehouse> findByIsActiveTrue();
+
     List<Warehouse> findByPlant_PlantId(Long plantId);
+
+    List<Warehouse> findByPlant_PlantIdAndIsActiveTrue(Long plantId);
 
     List<Warehouse> findByTypeAndIsActiveTrue(String type);
 }
+

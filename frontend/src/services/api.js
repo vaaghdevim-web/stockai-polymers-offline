@@ -173,7 +173,7 @@ export const warehouseApi = {
   getWarehouseById: (id) => api.get(`/warehouses/${id}`),
   createWarehouse: (data) => api.post('/warehouses', data),
   updateWarehouse: (id, data) => api.put(`/warehouses/${id}`, data),
-  deleteWarehouse: (id) => api.delete(`/warehouses/${id}`),
+  deleteWarehouse: (id, permanent = true) => api.delete(`/warehouses/${id}`, { params: { permanent } }),
   getPlants: () => api.get('/warehouses/plants'),
   getRacksByWarehouseId: (warehouseId) => api.get(`/warehouses/${warehouseId}/racks`),
   createRack: (warehouseId, data) => api.post(`/warehouses/${warehouseId}/racks`, data),

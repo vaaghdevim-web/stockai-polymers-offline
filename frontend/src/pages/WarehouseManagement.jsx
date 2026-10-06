@@ -56,6 +56,7 @@ export default function WarehouseManagement() {
   const [hierarchyError, setHierarchyError] = useState(null);
   const [viewMode, setViewMode] = useState('tree'); // 'tree' | 'table'
   const [filterType, setFilterType] = useState('ALL');
+  const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState('');
   const [binSearch, setBinSearch] = useState('');
 
@@ -230,13 +231,14 @@ export default function WarehouseManagement() {
   const selectedWarehouse = warehouses.find((w) => w.warehouseId === selectedWarehouseId) || null;
 
   const filteredWarehouses = warehouses.filter((w) => {
+    const matchesActive = showInactive ? true : (w.isActive !== false);
     const matchesType = filterType === 'ALL' || (w.type && w.type.toLowerCase().includes(filterType.toLowerCase()));
     const query = search.toLowerCase();
     const matchesSearch =
       (w.warehouseName && w.warehouseName.toLowerCase().includes(query)) ||
       (w.plantName && w.plantName.toLowerCase().includes(query)) ||
       (w.type && w.type.toLowerCase().includes(query));
-    return matchesType && matchesSearch;
+    return matchesActive && matchesType && matchesSearch;
   });
 
   const filteredBins = flatBins.filter((b) => {
@@ -389,16 +391,28 @@ export default function WarehouseManagement() {
             <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {['ALL', 'Raw', 'FG', 'Both'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilterType(t)}
-                className={`btn btn-xs ${filterType === t ? 'btn-primary' : 'btn-ghost'}`}
-              >
-                {t === 'ALL' ? 'All Types' : t === 'Raw' ? 'Raw Materials' : t === 'FG' ? 'Finished Goods' : 'Multi-purpose'}
-              </button>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {['ALL', 'Raw', 'FG', 'Both'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t)}
+                  className={`btn btn-xs ${filterType === t ? 'btn-primary' : 'btn-ghost'}`}
+                >
+                  {t === 'ALL' ? 'All Types' : t === 'Raw' ? 'Raw Materials' : t === 'FG' ? 'Finished Goods' : 'Multi-purpose'}
+                </button>
+              ))}
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                style={{ width: '12px', height: '12px', accentColor: 'var(--accent-cyan)' }}
+              />
+              Show Inactive
+            </label>
           </div>
 
           {/* List */}

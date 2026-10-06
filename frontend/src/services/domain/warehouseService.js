@@ -342,8 +342,8 @@ export const updateWarehouse = async (id, data) => {
  * Deletes or deactivates a warehouse.
  * Endpoint: DELETE /api/v1/warehouses/{id}
  */
-export const deleteWarehouse = async (id) => {
-  return warehouseApi.deleteWarehouse(id);
+export const deleteWarehouse = async (id, permanent = true) => {
+  return warehouseApi.deleteWarehouse(id, permanent);
 };
 
 /**

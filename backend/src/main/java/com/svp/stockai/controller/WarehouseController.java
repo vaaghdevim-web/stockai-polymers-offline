@@ -42,15 +42,16 @@ public class WarehouseController {
     @GetMapping
     public List<WarehouseResponse> getAllWarehouses(
             @RequestParam(required = false) Long plantId,
-            @RequestParam(required = false) String type) {
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "true") boolean activeOnly) {
 
         List<Warehouse> warehouses;
         if (plantId != null) {
-            warehouses = warehouseRepository.findByPlant_PlantId(plantId);
+            warehouses = activeOnly ? warehouseRepository.findByPlant_PlantIdAndIsActiveTrue(plantId) : warehouseRepository.findByPlant_PlantId(plantId);
         } else if (type != null && !type.isBlank()) {
             warehouses = warehouseRepository.findByTypeAndIsActiveTrue(type);
         } else {
-            warehouses = warehouseRepository.findAll();
+            warehouses = activeOnly ? warehouseRepository.findByIsActiveTrue() : warehouseRepository.findAll();
         }
 
         return warehouses.stream()
@@ -117,12 +118,44 @@ public class WarehouseController {
 
     @DeleteMapping("/{id:[0-9]+}")
     @Transactional
-    public ResponseEntity<Void> deleteWarehouse(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteWarehouse(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "true") boolean permanent) {
         Warehouse w = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found with ID: " + id));
-        w.setIsActive(false);
-        warehouseRepository.save(w);
-        return ResponseEntity.noContent().build();
+
+        if (permanent) {
+            try {
+                List<LocationBin> bins = locationBinRepository.findByShelf_Rack_Warehouse_WarehouseId(id);
+                locationBinRepository.deleteAll(bins);
+                List<LocationRack> racks = locationRackRepository.findByWarehouse_WarehouseId(id);
+                for (LocationRack r : racks) {
+                    List<LocationShelf> shelves = locationShelfRepository.findByRack_RackId(r.getRackId());
+                    locationShelfRepository.deleteAll(shelves);
+                }
+                locationRackRepository.deleteAll(racks);
+                warehouseRepository.delete(w);
+                return ResponseEntity.noContent().build();
+            } catch (Exception ignored) {
+                // If referenced by foreign key (orders/dispatches/transfers), mark inactive
+                w.setIsActive(false);
+                warehouseRepository.save(w);
+                return ResponseEntity.noContent().build();
+            }
+        } else {
+            w.setIsActive(false);
+            warehouseRepository.save(w);
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    @PostMapping("/{id:[0-9]+}/clear-all-stock")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> clearAllWarehouseStock(@PathVariable Long id) {
+        if (!warehouseRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found with ID: " + id);
+        }
+        return ResponseEntity.ok(Map.of("message", "Warehouse stock reset successfully", "warehouseId", id));
     }
 
     @GetMapping("/{id:[0-9]+}/bins")
