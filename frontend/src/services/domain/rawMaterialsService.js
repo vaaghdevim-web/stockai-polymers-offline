@@ -24,6 +24,30 @@ export const getRawMaterials = async () => {
 };
 
 /**
+ * Creates/defines a brand new raw material SKU.
+ * Endpoint: POST /api/v1/inventory/raw-materials/definitions
+ */
+export const createRawMaterial = async (payload) => {
+  return inventoryApi.createRawMaterial(payload);
+};
+
+/**
+ * Retrieves material categories.
+ * Endpoint: GET /api/v1/inventory/raw-materials/categories
+ */
+export const getMaterialCategories = async () => {
+  return inventoryApi.getMaterialCategories();
+};
+
+/**
+ * Retrieves units of measure.
+ * Endpoint: GET /api/v1/inventory/raw-materials/uoms
+ */
+export const getMaterialUoms = async () => {
+  return inventoryApi.getMaterialUoms();
+};
+
+/**
  * Retrieves a single raw material by ID.
  * Endpoint: GET /api/v1/inventory/raw-materials/{materialId}
  */

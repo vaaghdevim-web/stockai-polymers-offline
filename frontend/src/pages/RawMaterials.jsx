@@ -30,6 +30,7 @@ import {
   extractErrorMessage
 } from '../services/domain/rawMaterialsService';
 import InwardBatchModal from '../components/InwardBatchModal';
+import CreateRawMaterialModal from '../components/CreateRawMaterialModal';
 import BatchGenealogyModal from '../components/BatchGenealogyModal';
 import GrnSlipModal from '../components/GrnSlipModal';
 import WarehouseManagement from './WarehouseManagement';
@@ -50,6 +51,7 @@ export default function RawMaterials({ onNavigate }) {
   const itemsPerPage = 8;
 
   const [showInwardModal, setShowInwardModal] = useState(false);
+  const [showDefineMaterialModal, setShowDefineMaterialModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -303,10 +305,23 @@ export default function RawMaterials({ onNavigate }) {
               <Sparkles size={13} color="#0284C7" /> Reorder Check
             </button>
             <button
+              onClick={() => setShowDefineMaterialModal(true)}
+              className="btn btn-secondary btn-sm"
+              title="Define and register a new Raw Material SKU in the catalog"
+              style={{
+                color: '#0284C7',
+                borderColor: '#BAE6FD',
+                background: '#F0F9FF'
+              }}
+            >
+              <Plus size={14} /> Define Material SKU
+            </button>
+            <button
               onClick={() => setShowInwardModal(true)}
               className="btn btn-primary btn-sm"
+              title="Record an incoming raw material batch into inventory"
             >
-              <Plus size={14} /> + Add Material
+              <Plus size={14} /> Batch Inward
             </button>
           </div>
         )}
@@ -797,6 +812,13 @@ export default function RawMaterials({ onNavigate }) {
             onClose={() => setShowInwardModal(false)}
             onBatchAdded={fetchMaterials}
             rawMaterials={materials}
+          />
+
+          {/* Define New Raw Material SKU Modal */}
+          <CreateRawMaterialModal
+            isOpen={showDefineMaterialModal}
+            onClose={() => setShowDefineMaterialModal(false)}
+            onMaterialCreated={fetchMaterials}
           />
 
           {/* FIFO Material Batches Modal */}

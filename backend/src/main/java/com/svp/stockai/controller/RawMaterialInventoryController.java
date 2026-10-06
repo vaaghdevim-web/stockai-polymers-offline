@@ -28,25 +28,44 @@ public class RawMaterialInventoryController {
         return rawMaterialReceiptService.receive(request);
     }
 
+    @PostMapping("/definitions")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public RawMaterialResponse createRawMaterialDefinition(@Valid @RequestBody com.svp.stockai.dto.CreateRawMaterialRequest request) {
+        return rawMaterialQueryService.createRawMaterial(request);
+    }
+
+    @GetMapping("/categories")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public List<com.svp.stockai.entity.MaterialCategory> categories() {
+        return rawMaterialQueryService.getCategories();
+    }
+
+    @GetMapping("/uoms")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public List<com.svp.stockai.entity.UnitOfMeasure> uoms() {
+        return rawMaterialQueryService.getUoms();
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public List<RawMaterialResponse> rawMaterials() {
         return rawMaterialQueryService.findAll();
     }
 
-    @GetMapping("/{materialId}")
+    @GetMapping("/{materialId:[0-9]+}")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public RawMaterialResponse rawMaterial(@PathVariable Long materialId) {
         return rawMaterialQueryService.findById(materialId);
     }
 
-    @GetMapping({"/{materialId}/batches/fifo", "/{materialId}/batches"})
+    @GetMapping({"/{materialId:[0-9]+}/batches/fifo", "/{materialId:[0-9]+}/batches"})
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public List<MaterialBatchResponse> fifoBatches(@PathVariable Long materialId) {
         return rawMaterialReceiptService.fifoBatches(materialId);
     }
 
-    @GetMapping("/{materialId}/available-stock")
+    @GetMapping("/{materialId:[0-9]+}/available-stock")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public java.math.BigDecimal availableStock(@PathVariable Long materialId) {
         return rawMaterialQueryService.getAvailableStock(materialId);
