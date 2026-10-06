@@ -279,70 +279,75 @@ export default function Production() {
                       { stageId: 1, unitName: 'Tape Extrusion Line 01', sequenceNo: 1, status: 'Completed', inputWeightKg: 1000, outputWeightKg: 980, scrapWeightKg: 20 },
                       { stageId: 2, unitName: 'Circular Loom Weaving Shed', sequenceNo: 2, status: 'Running', inputWeightKg: 980, outputWeightKg: 0, scrapWeightKg: 0 },
                       { stageId: 3, unitName: 'Bag Cutting & Sewing Line', sequenceNo: 3, status: 'Pending', inputWeightKg: 0, outputWeightKg: 0, scrapWeightKg: 0 }
-                    ]).map((st) => (
-                      <div 
-                        key={st.stageId}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '8px 10px',
-                          background: 'var(--bg-card)',
-                          border: '1px solid var(--border-subtle)',
-                          borderRadius: 'var(--radius-xs)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{
-                            width: '18px',
-                            height: '18px',
-                            borderRadius: '50%',
-                            background: st.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-panel)',
-                            color: st.status === 'Completed' ? '#10B981' : 'var(--text-muted)',
+                    ]).map((st) => {
+                      const isPredecessorComplete = st.sequenceNo === 1 || (Array.isArray(run.stages) && run.stages.some(prev => prev.sequenceNo === st.sequenceNo - 1 && prev.status === 'Completed'));
+                      const canStart = (st.status === 'Ready') || (st.status === 'Pending' && isPredecessorComplete);
+
+                      return (
+                        <div 
+                          key={st.stageId}
+                          style={{
                             display: 'flex',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '10px',
-                            fontWeight: '700'
-                          }}>
-                            {st.sequenceNo || 1}
-                          </span>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                            {st.unitName || `Stage ${st.sequenceNo}`}
-                          </span>
+                            padding: '8px 10px',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-xs)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              width: '18px',
+                              height: '18px',
+                              borderRadius: '50%',
+                              background: st.status === 'Completed' ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-panel)',
+                              color: st.status === 'Completed' ? '#10B981' : 'var(--text-muted)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: '700'
+                            }}>
+                              {st.sequenceNo || 1}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                              {st.unitName || `Stage ${st.sequenceNo}`}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className={`badge ${
+                              st.status === 'Completed' ? 'badge-emerald' : 
+                              st.status === 'Running' ? 'badge-sky' : 
+                              canStart ? 'badge-amber' : 'badge-secondary'
+                            }`} style={{ fontSize: '10px' }}>
+                              {canStart && st.status === 'Pending' ? 'Ready' : st.status}
+                            </span>
+
+                            {canStart && st.status !== 'Running' && st.status !== 'Completed' && (
+                              <button
+                                onClick={() => handleStartStage(run, st)}
+                                className="btn btn-secondary btn-xs"
+                                style={{ fontSize: '10.5px', padding: '2px 8px', color: '#0284C7', borderColor: '#BAE6FD', background: '#F0F9FF' }}
+                              >
+                                <Play size={11} /> Start Stage
+                              </button>
+                            )}
+
+                            {st.status === 'Running' && (
+                              <button
+                                onClick={() => handleOpenCompleteModal(run, st)}
+                                className="btn btn-primary btn-xs"
+                                style={{ fontSize: '10.5px', padding: '2px 8px' }}
+                              >
+                                <CheckCircle size={11} /> Complete
+                              </button>
+                            )}
+                          </div>
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className={`badge ${
-                            st.status === 'Completed' ? 'badge-emerald' : 
-                            st.status === 'Running' ? 'badge-sky' : 
-                            st.status === 'Ready' ? 'badge-amber' : 'badge-secondary'
-                          }`} style={{ fontSize: '10px' }}>
-                            {st.status}
-                          </span>
-
-                          {st.status === 'Ready' && (
-                            <button
-                              onClick={() => handleStartStage(run, st)}
-                              className="btn btn-secondary btn-xs"
-                              style={{ fontSize: '10.5px', padding: '2px 8px', color: '#0284C7', borderColor: '#BAE6FD', background: '#F0F9FF' }}
-                            >
-                              <Play size={11} /> Start
-                            </button>
-                          )}
-
-                          {st.status === 'Running' && (
-                            <button
-                              onClick={() => handleOpenCompleteModal(run, st)}
-                              className="btn btn-primary btn-xs"
-                              style={{ fontSize: '10.5px', padding: '2px 8px' }}
-                            >
-                              <CheckCircle size={11} /> Complete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

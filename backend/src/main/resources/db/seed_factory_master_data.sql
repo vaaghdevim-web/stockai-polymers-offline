@@ -436,7 +436,7 @@ WHERE pr.production_number = 'PR-2026-001' AND pu.unit_code = 'PU-CONV-01' AND m
 
 -- Production Stages for PR-2026-002
 INSERT INTO production_stage (production_id, unit_id, machine_id, sequence_no, status, input_weight_kg, output_weight_kg, scrap_weight_kg, started_at, created_at)
-SELECT pr.production_id, pu.unit_id, m.machine_id, 1, 'Pending', 0.0000, 0.0000, 0.0000, NULL, CURRENT_TIMESTAMP
+SELECT pr.production_id, pu.unit_id, m.machine_id, 1, 'Ready', 0.0000, 0.0000, 0.0000, NULL, CURRENT_TIMESTAMP
 FROM production_run pr, production_unit pu, machine m
 WHERE pr.production_number = 'PR-2026-002' AND pu.unit_code = 'PU-EXT-01' AND m.machine_code = 'EXT-01';
 
