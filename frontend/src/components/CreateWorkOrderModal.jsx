@@ -34,12 +34,20 @@ export default function CreateWorkOrderModal({ isOpen, onClose, onRunAdded, boms
     setSubmitting(true);
 
     try {
+      const payload = {
+        productionNumber: formData.productionNumber?.trim() || undefined,
+        bomId: formData.bomId ? Number(formData.bomId) : null,
+        machineId: formData.machineId ? Number(formData.machineId) : null,
+        plannedQty: parseFloat(formData.plannedQty),
+      };
+
+      await productionApi.createRun(payload);
       if (onRunAdded) {
         onRunAdded();
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to dispatch work order.');
+      setError(err.response?.data?.message || err.message || 'Failed to dispatch work order.');
     } finally {
       setSubmitting(false);
     }

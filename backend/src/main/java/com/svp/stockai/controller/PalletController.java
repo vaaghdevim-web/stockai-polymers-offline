@@ -39,13 +39,13 @@ public class PalletController {
 
     @GetMapping("/finished-batches")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<java.util.List<com.svp.stockai.entity.FinishedBatch>> getFinishedBatches() {
+    public ResponseEntity<java.util.List<com.svp.stockai.dto.FinishedBatchResponse>> getFinishedBatches() {
         return ResponseEntity.ok(palletService.getFinishedBatches());
     }
 
     @GetMapping("/finished-batches/{identifier}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<com.svp.stockai.entity.FinishedBatch> getFinishedBatch(@PathVariable String identifier) {
+    public ResponseEntity<com.svp.stockai.dto.FinishedBatchResponse> getFinishedBatch(@PathVariable String identifier) {
         return ResponseEntity.ok(palletService.getFinishedBatch(identifier));
     }
 

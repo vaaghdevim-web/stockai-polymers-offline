@@ -245,6 +245,7 @@ export const productionApi = {
   getRuns: (params) => api.get('/production-runs', { params }),
   getWipRuns: (plantId) => api.get('/production-runs/wip', { params: { plantId } }),
   getRunById: (id) => api.get(`/production-runs/${id}`),
+  createRun: (data) => api.post('/production-runs', data),
   getStages: (runId) => api.get(`/production-runs/${runId}/stages`),
   getStageById: (runId, stageId) => api.get(`/production-runs/${runId}/stages/${stageId}`),
   startStage: (runId, stageId) => api.post(`/production-runs/${runId}/stages/${stageId}/start`),

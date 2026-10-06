@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Plus, RefreshCw, Sparkles, GitBranch, Calculator, Factory, Package } from 'lucide-react';
+import { CheckCircle, AlertCircle, Plus, RefreshCw, Sparkles, GitBranch, Calculator, Factory, Package, Play } from 'lucide-react';
 import { productionApi } from '../services/api';
 import CreateWorkOrderModal from '../components/CreateWorkOrderModal';
 import CompoundingBomModal from '../components/CompoundingBomModal';
@@ -46,6 +46,16 @@ export default function Production() {
       fetchProductionData();
     }
   }, [subModule]);
+
+  const handleStartStage = async (run, stage) => {
+    try {
+      await productionApi.startStage(run.productionId, stage.stageId);
+      fetchProductionData();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to start stage.';
+      alert(`Cannot Start Stage: ${msg}`);
+    }
+  };
 
   const handleOpenCompleteModal = (run, stage) => {
     const inputWeight = run.plannedQty ? Number(run.plannedQty) : 1000.0;
@@ -276,10 +286,21 @@ export default function Production() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className={`badge ${
                             st.status === 'Completed' ? 'badge-emerald' : 
-                            st.status === 'Running' ? 'badge-sky' : 'badge-secondary'
+                            st.status === 'Running' ? 'badge-sky' : 
+                            st.status === 'Ready' ? 'badge-amber' : 'badge-secondary'
                           }`} style={{ fontSize: '10px' }}>
                             {st.status}
                           </span>
+
+                          {st.status === 'Ready' && (
+                            <button
+                              onClick={() => handleStartStage(run, st)}
+                              className="btn btn-secondary btn-xs"
+                              style={{ fontSize: '10.5px', padding: '2px 8px', color: '#0284C7', borderColor: '#BAE6FD', background: '#F0F9FF' }}
+                            >
+                              <Play size={11} /> Start
+                            </button>
+                          )}
 
                           {st.status === 'Running' && (
                             <button

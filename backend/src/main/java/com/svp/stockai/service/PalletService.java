@@ -237,23 +237,66 @@ public class PalletService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<FinishedBatch> getFinishedBatches() {
-        return finishedBatchRepository.findAll();
+    public java.util.List<com.svp.stockai.dto.FinishedBatchResponse> getFinishedBatches() {
+        return finishedBatchRepository.findAll().stream()
+                .map(this::mapBatchToResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public FinishedBatch getFinishedBatch(String identifier) {
+    public com.svp.stockai.dto.FinishedBatchResponse getFinishedBatch(String identifier) {
         if (identifier == null || identifier.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Finished batch identifier cannot be empty");
         }
+        FinishedBatch batch;
         try {
             Long id = Long.parseLong(identifier.trim());
-            return finishedBatchRepository.findById(id)
+            batch = finishedBatchRepository.findById(id)
                     .orElseGet(() -> finishedBatchRepository.findByBatchNo(identifier.trim())
                             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished batch not found: " + identifier)));
         } catch (NumberFormatException ignored) {
-            return finishedBatchRepository.findByBatchNo(identifier.trim())
+            batch = finishedBatchRepository.findByBatchNo(identifier.trim())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished batch not found: " + identifier));
         }
+        return mapBatchToResponse(batch);
+    }
+
+    public com.svp.stockai.dto.FinishedBatchResponse mapBatchToResponse(FinishedBatch fb) {
+        if (fb == null) return null;
+        Long productId = null;
+        String productCode = null;
+        String productName = null;
+        String productCategory = null;
+
+        if (fb.getProduct() != null) {
+            productId = fb.getProduct().getProductId();
+            productCode = fb.getProduct().getProductCode();
+            productName = fb.getProduct().getProductName();
+            if (fb.getProduct().getCategory() != null) {
+                productCategory = fb.getProduct().getCategory().getCategoryName();
+            }
+        }
+
+        return com.svp.stockai.dto.FinishedBatchResponse.builder()
+                .finishedBatchId(fb.getFinishedBatchId())
+                .batchNo(fb.getBatchNo())
+                .productId(productId)
+                .productCode(productCode)
+                .productName(productName)
+                .productCategory(productCategory)
+                .productionDate(fb.getProductionDate())
+                .expiryDate(fb.getExpiryDate())
+                .qtyProduced(fb.getQtyProduced())
+                .qtyRejected(fb.getQtyRejected())
+                .inputWeightKg(fb.getInputWeightKg())
+                .outputWeightKg(fb.getOutputWeightKg())
+                .scrapWeightKg(fb.getScrapWeightKg())
+                .bagsProduced(fb.getBagsProduced())
+                .averageBagWeightG(fb.getAverageBagWeightG())
+                .bagsPerKg(fb.getBagsPerKg())
+                .qualityStatus(fb.getQualityStatus())
+                .isActive(fb.getIsActive())
+                .createdAt(fb.getCreatedAt())
+                .build();
     }
 }

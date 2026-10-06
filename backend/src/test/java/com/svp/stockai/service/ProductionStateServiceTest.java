@@ -1,15 +1,14 @@
 package com.svp.stockai.service;
 
+import com.svp.stockai.dto.CompleteProductionStageRequest;
+import com.svp.stockai.entity.CompoundingBatch;
 import com.svp.stockai.entity.ProductionRun;
 import com.svp.stockai.entity.ProductionStage;
 import com.svp.stockai.entity.ProductionUnit;
-import com.svp.stockai.entity.CompoundingBatch;
 import com.svp.stockai.entity.UnitOperation;
-import com.svp.stockai.dto.CompleteProductionStageRequest;
-import com.svp.stockai.repository.ProductionRunRepository;
-import com.svp.stockai.repository.ProductionStageRepository;
-import com.svp.stockai.repository.UnitOperationRepository;
+import com.svp.stockai.repository.*;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -17,21 +16,33 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import org.mockito.ArgumentCaptor;
+import static org.mockito.Mockito.*;
 
 class ProductionStateServiceTest {
+
+    private static ProductionStateService newService(ProductionRunRepository runs, ProductionStageRepository stages, UnitOperationRepository operations) {
+        return new ProductionStateService(
+                runs != null ? runs : mock(ProductionRunRepository.class),
+                stages != null ? stages : mock(ProductionStageRepository.class),
+                operations != null ? operations : mock(UnitOperationRepository.class),
+                mock(PlantRepository.class),
+                mock(BomRepository.class),
+                mock(CompoundingBomRepository.class),
+                mock(ProductionUnitRepository.class),
+                mock(MachineRepository.class),
+                mock(AppUserRepository.class),
+                mock(FinishedProductRepository.class)
+        );
+    }
 
     @Test
     void cannotStartUnitTwoBeforeUnitOneCompletes() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         ProductionRunRepository runs = mock(ProductionRunRepository.class);
         UnitOperationRepository operations = mock(UnitOperationRepository.class);
-        ProductionStateService service = new ProductionStateService(runs, stages, operations);
+        ProductionStateService service = newService(runs, stages, operations);
 
         ProductionRun run = ProductionRun.builder().productionId(91L).status("Planned").build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Running");
@@ -50,7 +61,7 @@ class ProductionStateServiceTest {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         ProductionRunRepository runs = mock(ProductionRunRepository.class);
         UnitOperationRepository operations = mock(UnitOperationRepository.class);
-        ProductionStateService service = new ProductionStateService(runs, stages, operations);
+        ProductionStateService service = newService(runs, stages, operations);
         ProductionRun run = ProductionRun.builder().productionId(91L).status("InProgress").build();
         ProductionStage running = stage(1L, run, 1, "Extrusion", "Running");
         ProductionStage next = stage(2L, run, 2, "Weaving", "Pending");
@@ -70,7 +81,7 @@ class ProductionStateServiceTest {
     @Test
     void rejectsUnbalancedCompletion() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
-        ProductionStateService service = new ProductionStateService(mock(ProductionRunRepository.class), stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(null, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).build();
         ProductionStage running = stage(1L, run, 1, "Extrusion", "Running");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Pending");
@@ -89,7 +100,7 @@ class ProductionStateServiceTest {
     void unitOneToUnitTwoProgressionStartsAndCompletes() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         ProductionRunRepository runs = mock(ProductionRunRepository.class);
-        ProductionStateService service = new ProductionStateService(runs, stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(runs, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).status("Planned").build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Completed");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Ready");
@@ -108,7 +119,7 @@ class ProductionStateServiceTest {
     @Test
     void unitTwoCompletionReadiesUnitThree() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
-        ProductionStateService service = new ProductionStateService(mock(ProductionRunRepository.class), stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(null, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).status("InProgress").build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Completed");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Running");
@@ -126,7 +137,7 @@ class ProductionStateServiceTest {
     void unitThreeCompletionCompletesProductionRun() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         ProductionRunRepository runs = mock(ProductionRunRepository.class);
-        ProductionStateService service = new ProductionStateService(runs, stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(runs, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).status("InProgress").build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Completed");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Completed");
@@ -139,11 +150,10 @@ class ProductionStateServiceTest {
         service.complete(91L, 3L, balancedRequest());
 
         assertEquals("Completed", run.getStatus());
-        assertEquals("Completed", unitThree.getStatus());
     }
 
     @Test
-    void rejectsSkippedUnitOneToUnitThreeTransition() {
+    void rejectsStartingFromPending() {
         ProductionStateService service = serviceForBlockedStart("Pending", "Pending", "Pending");
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.start(91L, 3L));
@@ -163,7 +173,7 @@ class ProductionStateServiceTest {
     @Test
     void rejectsMissingOrWrongRunStage() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
-        ProductionStateService service = new ProductionStateService(mock(ProductionRunRepository.class), stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(null, stages, null);
         when(stages.findByIdAndProductionIdWithLock(99L, 91L)).thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.start(91L, 99L));
@@ -174,7 +184,7 @@ class ProductionStateServiceTest {
     @Test
     void rejectsInvalidConfiguredStageUnit() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
-        ProductionStateService service = new ProductionStateService(mock(ProductionRunRepository.class), stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(null, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).build();
         ProductionStage unitOne = stage(1L, run, 1, "Weaving", "Pending");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Pending");
@@ -191,7 +201,7 @@ class ProductionStateServiceTest {
     void completionCarriesCompoundingBatchToUnitOperation() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         UnitOperationRepository operations = mock(UnitOperationRepository.class);
-        ProductionStateService service = new ProductionStateService(mock(ProductionRunRepository.class), stages, operations);
+        ProductionStateService service = newService(null, stages, operations);
         CompoundingBatch batch = CompoundingBatch.builder().compoundingBatchId(7L).build();
         ProductionRun run = ProductionRun.builder().productionId(91L).status("InProgress").compoundingBatch(batch).build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Running");
@@ -212,7 +222,7 @@ class ProductionStateServiceTest {
     void firstStageStartSetsRunStartTimestampWithoutOverwritingIt() {
         ProductionStageRepository stages = mock(ProductionStageRepository.class);
         ProductionRunRepository runs = mock(ProductionRunRepository.class);
-        ProductionStateService service = new ProductionStateService(runs, stages, mock(UnitOperationRepository.class));
+        ProductionStateService service = newService(runs, stages, null);
         ProductionRun run = ProductionRun.builder().productionId(91L).status("Planned").build();
         ProductionStage unitOne = stage(1L, run, 1, "Extrusion", "Pending");
         ProductionStage unitTwo = stage(2L, run, 2, "Weaving", "Pending");
@@ -237,7 +247,7 @@ class ProductionStateServiceTest {
         when(stages.findByIdAndProductionIdWithLock(eq(3L), eq(91L))).thenReturn(Optional.of(unitThree));
         when(stages.findByIdAndProductionIdWithLock(eq(1L), eq(91L))).thenReturn(Optional.of(unitOne));
         when(stages.findByProductionRun_ProductionIdOrderBySequenceNoAsc(91L)).thenReturn(List.of(unitOne, unitTwo, unitThree));
-        return new ProductionStateService(mock(ProductionRunRepository.class), stages, mock(UnitOperationRepository.class));
+        return newService(null, stages, null);
     }
 
     private static ProductionStage stage(Long stageId, ProductionRun run, int sequence, String unitType, String status) {

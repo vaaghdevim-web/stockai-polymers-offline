@@ -1,13 +1,11 @@
 package com.svp.stockai.service;
 
 import com.svp.stockai.dto.CompleteProductionStageRequest;
+import com.svp.stockai.dto.CreateProductionRunRequest;
+import com.svp.stockai.dto.ProductionRunResponse;
 import com.svp.stockai.dto.ProductionStageResponse;
-import com.svp.stockai.entity.ProductionFlowStage;
-import com.svp.stockai.entity.ProductionStage;
-import com.svp.stockai.entity.UnitOperation;
-import com.svp.stockai.repository.ProductionRunRepository;
-import com.svp.stockai.repository.ProductionStageRepository;
-import com.svp.stockai.repository.UnitOperationRepository;
+import com.svp.stockai.entity.*;
+import com.svp.stockai.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,6 +24,192 @@ public class ProductionStateService {
     private final ProductionRunRepository productionRunRepository;
     private final ProductionStageRepository productionStageRepository;
     private final UnitOperationRepository unitOperationRepository;
+    private final PlantRepository plantRepository;
+    private final BomRepository bomRepository;
+    private final CompoundingBomRepository compoundingBomRepository;
+    private final ProductionUnitRepository productionUnitRepository;
+    private final MachineRepository machineRepository;
+    private final AppUserRepository appUserRepository;
+    private final FinishedProductRepository finishedProductRepository;
+
+    @Transactional
+    public ProductionRunResponse createProductionRun(CreateProductionRunRequest request, String username) {
+        if (request == null || request.getPlannedQty() == null || request.getPlannedQty().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Planned quantity must be greater than 0");
+        }
+
+        // 1. Resolve Plant
+        Plant plant = null;
+        if (request.getPlantId() != null) {
+            plant = plantRepository.findById(request.getPlantId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Plant not found: " + request.getPlantId()));
+        } else {
+            plant = plantRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No plant found in system"));
+        }
+
+        // 2. Resolve BOM
+        Bom bom = null;
+        if (request.getBomId() != null) {
+            bom = bomRepository.findById(request.getBomId()).orElse(null);
+            if (bom == null) {
+                var compoundingBom = compoundingBomRepository.findById(request.getBomId()).orElse(null);
+                if (compoundingBom != null) {
+                    bom = bomRepository.findFirstByStatus("Active")
+                            .or(() -> bomRepository.findAll().stream().findFirst())
+                            .orElse(null);
+                }
+            }
+        }
+        if (bom == null) {
+            bom = bomRepository.findFirstByStatus("Active")
+                    .or(() -> bomRepository.findAll().stream().findFirst())
+                    .orElseGet(() -> {
+                        FinishedProduct prod = finishedProductRepository.findAll().stream().findFirst()
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No finished product found for BOM"));
+                        return bomRepository.save(Bom.builder()
+                                .product(prod)
+                                .version("v1.0-STD")
+                                .effectiveFrom(java.time.LocalDate.now())
+                                .yieldQuantity(new BigDecimal("1000.0000"))
+                                .status("Active")
+                                .build());
+                    });
+        }
+
+        // 3. Resolve Production Number
+        String prodNumber = request.getProductionNumber();
+        if (prodNumber == null || prodNumber.isBlank()) {
+            long count = productionRunRepository.count() + 1;
+            prodNumber = String.format("PR-%d-%03d", java.time.LocalDate.now().getYear(), count);
+        }
+        if (productionRunRepository.findByProductionNumber(prodNumber).isPresent()) {
+            prodNumber = prodNumber + "-" + (System.currentTimeMillis() % 10000);
+        }
+
+        // 4. Resolve Creator
+        AppUser creator = null;
+        if (username != null) {
+            creator = appUserRepository.findByUserName(username).orElse(null);
+        }
+
+        // 5. Create and Save Production Run
+        ProductionRun run = ProductionRun.builder()
+                .plant(plant)
+                .bom(bom)
+                .productionNumber(prodNumber)
+                .status("Planned")
+                .plannedQty(request.getPlannedQty())
+                .actualQty(BigDecimal.ZERO)
+                .inputWeightKg(request.getPlannedQty())
+                .outputWeightKg(BigDecimal.ZERO)
+                .scrapWeightKg(BigDecimal.ZERO)
+                .createdBy(creator)
+                .build();
+
+        ProductionRun savedRun = productionRunRepository.save(run);
+
+        // 6. Resolve / Ensure the 3 Production Units (Extrusion, Weaving, Conversion)
+        List<ProductionUnit> units = productionUnitRepository.findByPlant_PlantIdOrderBySequenceNoAsc(plant.getPlantId());
+        if (units.isEmpty()) {
+            units = productionUnitRepository.findByOrderBySequenceNoAsc();
+        }
+
+        final Plant finalPlant = plant;
+        ProductionUnit u1 = units.stream().filter(u -> "Extrusion".equalsIgnoreCase(u.getUnitType()) || (u.getSequenceNo() != null && u.getSequenceNo() == 1)).findFirst()
+                .orElseGet(() -> productionUnitRepository.save(ProductionUnit.builder().plant(finalPlant).unitCode("PU-EXT-01").unitName("Extrusion Tape Line Unit").unitType("Extrusion").sequenceNo(1).isActive(true).build()));
+        ProductionUnit u2 = units.stream().filter(u -> "Weaving".equalsIgnoreCase(u.getUnitType()) || (u.getSequenceNo() != null && u.getSequenceNo() == 2)).findFirst()
+                .orElseGet(() -> productionUnitRepository.save(ProductionUnit.builder().plant(finalPlant).unitCode("PU-WEAV-01").unitName("Circular Loom Weaving Unit").unitType("Weaving").sequenceNo(2).isActive(true).build()));
+        ProductionUnit u3 = units.stream().filter(u -> "Conversion".equalsIgnoreCase(u.getUnitType()) || (u.getSequenceNo() != null && u.getSequenceNo() == 3)).findFirst()
+                .orElseGet(() -> productionUnitRepository.save(ProductionUnit.builder().plant(finalPlant).unitCode("PU-CONV-01").unitName("Conversion & Finishing Unit").unitType("Conversion").sequenceNo(3).isActive(true).build()));
+
+        // 7. Resolve Machines
+        Machine m1 = null;
+        if (request.getMachineId() != null) {
+            m1 = machineRepository.findById(request.getMachineId()).orElse(null);
+        }
+        if (m1 == null) {
+            m1 = machineRepository.findAll().stream()
+                    .filter(m -> m.getUnit() != null && "Extrusion".equalsIgnoreCase(m.getUnit().getUnitType()))
+                    .findFirst().orElse(null);
+        }
+
+        Machine m2 = machineRepository.findAll().stream()
+                .filter(m -> m.getUnit() != null && "Weaving".equalsIgnoreCase(m.getUnit().getUnitType()))
+                .findFirst().orElse(null);
+
+        Machine m3 = machineRepository.findAll().stream()
+                .filter(m -> m.getUnit() != null && "Conversion".equalsIgnoreCase(m.getUnit().getUnitType()))
+                .findFirst().orElse(null);
+
+        // 8. Create Stages
+        ProductionStage stage1 = ProductionStage.builder()
+                .productionRun(savedRun)
+                .unit(u1)
+                .machine(m1)
+                .sequenceNo(1)
+                .status("Ready")
+                .inputWeightKg(BigDecimal.ZERO)
+                .outputWeightKg(BigDecimal.ZERO)
+                .scrapWeightKg(BigDecimal.ZERO)
+                .build();
+
+        ProductionStage stage2 = ProductionStage.builder()
+                .productionRun(savedRun)
+                .unit(u2)
+                .machine(m2)
+                .sequenceNo(2)
+                .status("Pending")
+                .inputWeightKg(BigDecimal.ZERO)
+                .outputWeightKg(BigDecimal.ZERO)
+                .scrapWeightKg(BigDecimal.ZERO)
+                .build();
+
+        ProductionStage stage3 = ProductionStage.builder()
+                .productionRun(savedRun)
+                .unit(u3)
+                .machine(m3)
+                .sequenceNo(3)
+                .status("Pending")
+                .inputWeightKg(BigDecimal.ZERO)
+                .outputWeightKg(BigDecimal.ZERO)
+                .scrapWeightKg(BigDecimal.ZERO)
+                .build();
+
+        List<ProductionStage> savedStages = productionStageRepository.saveAll(List.of(stage1, stage2, stage3));
+        List<ProductionStageResponse> stageResponses = savedStages.stream().map(this::response).toList();
+
+        Long prodId = null;
+        String prodName = null;
+        String prodCode = null;
+        if (bom.getProduct() != null) {
+            prodId = bom.getProduct().getProductId();
+            prodName = bom.getProduct().getProductName();
+            prodCode = bom.getProduct().getProductCode();
+        }
+
+        return ProductionRunResponse.builder()
+                .productionId(savedRun.getProductionId())
+                .plantId(plant.getPlantId())
+                .plantName(plant.getPlantName())
+                .bomId(bom.getBomId())
+                .productId(prodId)
+                .productName(prodName)
+                .productCode(prodCode)
+                .productionNumber(savedRun.getProductionNumber())
+                .status(savedRun.getStatus())
+                .currentStage(u1.getUnitName())
+                .currentStageSequence(1)
+                .plannedQty(savedRun.getPlannedQty())
+                .actualQty(savedRun.getActualQty())
+                .inputWeightKg(savedRun.getInputWeightKg())
+                .outputWeightKg(savedRun.getOutputWeightKg())
+                .scrapWeightKg(savedRun.getScrapWeightKg())
+                .stages(stageResponses)
+                .createdAt(savedRun.getCreatedAt())
+                .updatedAt(savedRun.getUpdatedAt())
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public ProductionStageResponse getStage(Long productionId, Long stageId) {

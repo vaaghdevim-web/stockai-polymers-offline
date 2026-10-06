@@ -41,6 +41,9 @@ class ProductionRunControllerTest {
     @MockitoBean
     private ProductionStageRepository productionStageRepository;
 
+    @MockitoBean
+    private com.svp.stockai.service.ProductionStateService productionStateService;
+
     private ProductionRun createSampleRun(Long id, String prNumber, String status) {
         Plant plant = Plant.builder().plantId(1L).plantName("Unit 1 Plant").build();
         FinishedProduct product = FinishedProduct.builder()

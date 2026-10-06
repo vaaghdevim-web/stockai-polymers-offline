@@ -34,13 +34,13 @@ public class ProductionStageController {
     }
 
     @PostMapping("/{stageId}/start")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'PRODUCTION_MANAGER', 'PLANT_MANAGER', 'FACTORY_DIRECTOR')")
     public ProductionStageResponse start(@PathVariable Long productionId, @PathVariable Long stageId) {
         return productionStateService.start(productionId, stageId);
     }
 
     @PostMapping("/{stageId}/complete")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'PRODUCTION_MANAGER', 'PLANT_MANAGER', 'FACTORY_DIRECTOR')")
     public ProductionStageResponse complete(@PathVariable Long productionId, @PathVariable Long stageId,
                                             @Valid @RequestBody CompleteProductionStageRequest request) {
         return productionStateService.complete(productionId, stageId, request);

@@ -24,6 +24,17 @@ public class ProductionRunController {
 
     private final ProductionRunRepository productionRunRepository;
     private final ProductionStageRepository productionStageRepository;
+    private final com.svp.stockai.service.ProductionStateService productionStateService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'PRODUCTION_MANAGER', 'PLANT_MANAGER', 'FACTORY_DIRECTOR')")
+    public ResponseEntity<ProductionRunResponse> createProductionRun(
+            @jakarta.validation.Valid @RequestBody com.svp.stockai.dto.CreateProductionRunRequest request,
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        ProductionRunResponse response = productionStateService.createProductionRun(request, username);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
     @GetMapping
     @Transactional(readOnly = true)
