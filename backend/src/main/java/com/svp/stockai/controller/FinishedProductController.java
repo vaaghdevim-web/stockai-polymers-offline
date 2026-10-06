@@ -23,7 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/finished-products")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'MANAGER', 'ADMIN')")
+@PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'FACTORY_DIRECTOR', 'PLANT_MANAGER', 'PRODUCTION_MANAGER', 'QUALITY_MANAGER', 'WAREHOUSE_EXECUTIVE', 'DISPATCH_EXECUTIVE', 'STORE_MANAGER', 'PURCHASE_MANAGER', 'ACCOUNTS_TEAM')")
 public class FinishedProductController {
 
     private final FinishedProductRepository finishedProductRepository;
@@ -31,6 +31,7 @@ public class FinishedProductController {
     private final UnitOfMeasureRepository unitOfMeasureRepository;
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<FinishedProductResponse> getAllProducts(
             @RequestParam(required = false, defaultValue = "true") boolean activeOnly) {
 
@@ -44,6 +45,7 @@ public class FinishedProductController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public FinishedProductResponse getProductById(@PathVariable Long id) {
         FinishedProduct p = finishedProductRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished Product not found with ID: " + id));
@@ -51,6 +53,7 @@ public class FinishedProductController {
     }
 
     @GetMapping("/categories")
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getCategories() {
         return productCategoryRepository.findAll().stream()
                 .map(c -> Map.<String, Object>of(
@@ -63,7 +66,7 @@ public class FinishedProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'FACTORY_DIRECTOR', 'PLANT_MANAGER', 'PRODUCTION_MANAGER')")
     @Transactional
     public FinishedProductResponse createProduct(@Valid @RequestBody CreateFinishedProductRequest request) {
         // Resolve Category
@@ -134,7 +137,7 @@ public class FinishedProductController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'FACTORY_DIRECTOR', 'PLANT_MANAGER', 'PRODUCTION_MANAGER')")
     @Transactional
     public FinishedProductResponse updateProduct(@PathVariable Long id, @Valid @RequestBody CreateFinishedProductRequest request) {
         FinishedProduct product = finishedProductRepository.findById(id)
@@ -170,7 +173,7 @@ public class FinishedProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'FACTORY_DIRECTOR', 'PLANT_MANAGER', 'PRODUCTION_MANAGER')")
     @Transactional
     public Map<String, Object> deleteProduct(@PathVariable Long id) {
         FinishedProduct product = finishedProductRepository.findById(id)

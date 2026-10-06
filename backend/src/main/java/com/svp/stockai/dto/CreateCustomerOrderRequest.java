@@ -39,9 +39,24 @@ public class CreateCustomerOrderRequest {
         @NotNull(message = "Product ID is required")
         private Long productId;
 
-        @NotNull(message = "Ordered quantity is required")
         private BigDecimal orderedQty;
 
+        private BigDecimal quantity;
+
         private BigDecimal rate;
+
+        private BigDecimal unitPrice;
+
+        public BigDecimal getEffectiveQty() {
+            if (orderedQty != null && orderedQty.compareTo(BigDecimal.ZERO) > 0) return orderedQty;
+            if (quantity != null && quantity.compareTo(BigDecimal.ZERO) > 0) return quantity;
+            return BigDecimal.ZERO;
+        }
+
+        public BigDecimal getEffectiveRate() {
+            if (rate != null && rate.compareTo(BigDecimal.ZERO) > 0) return rate;
+            if (unitPrice != null && unitPrice.compareTo(BigDecimal.ZERO) > 0) return unitPrice;
+            return null;
+        }
     }
 }

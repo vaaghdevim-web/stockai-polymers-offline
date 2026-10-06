@@ -165,7 +165,7 @@ INSERT INTO app_role (role_name, is_active) VALUES ('DISPATCH_EXECUTIVE', TRUE);
 
 -- 8. Users (passwords are represented by BCrypt hashes below)
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)
-SELECT p.plant_id, 'admin', 'admin@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', 'SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY', TRUE, TRUE, CURRENT_TIMESTAMP
+SELECT p.plant_id, 'admin', 'admin@stockai.com', '$2a$10$Rkw5CIjXd/QXTOnvAIrYnegumJpB7am/0xHzfUzshXjWXaofhWYrS', 'STOCKAIADMINMFA2', TRUE, TRUE, CURRENT_TIMESTAMP
 FROM plant p WHERE p.plant_name = 'Sri Vidha Polymers - Unit 1';
 
 INSERT INTO app_user (plant_id, user_name, email, password_hash, mfa_secret, mfa_enabled, is_active, created_at)

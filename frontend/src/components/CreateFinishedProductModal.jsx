@@ -43,6 +43,38 @@ export default function CreateFinishedProductModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const allCategoryOptions = React.useMemo(() => {
+    const list = [];
+    const seen = new Set();
+
+    // Add backend categories first
+    categories.forEach(c => {
+      const name = typeof c === 'string' ? c : c.categoryName;
+      if (name && !seen.has(name.trim().toLowerCase())) {
+        seen.add(name.trim().toLowerCase());
+        list.push({ categoryId: c.categoryId || '', categoryName: name.trim() });
+      }
+    });
+
+    // Add default categories
+    DEFAULT_CATEGORIES.forEach(name => {
+      if (!seen.has(name.trim().toLowerCase())) {
+        seen.add(name.trim().toLowerCase());
+        list.push({ categoryId: '', categoryName: name.trim() });
+      }
+    });
+
+    // Add current custom category if not in list
+    if (formData.categoryName && !seen.has(formData.categoryName.trim().toLowerCase())) {
+      seen.add(formData.categoryName.trim().toLowerCase());
+      list.push({ categoryId: formData.categoryId || '', categoryName: formData.categoryName.trim() });
+    }
+
+    return list;
+  }, [categories, formData.categoryName, formData.categoryId]);
+
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -215,19 +247,67 @@ export default function CreateFinishedProductModal({
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '4px' }}>
                 Category
               </label>
-              <input
-                type="text"
-                list="product-categories-list"
-                className="input input-sm"
-                value={formData.categoryName}
-                onChange={(e) => setFormData({ ...formData, categoryName: e.target.value })}
-                placeholder="Select or enter category"
-                style={{ width: '100%' }}
-              />
-              <datalist id="product-categories-list">
-                {DEFAULT_CATEGORIES.map(c => <option key={c} value={c} />)}
-                {categories.map(c => <option key={c.categoryId || c.categoryName} value={c.categoryName} />)}
-              </datalist>
+              {!isCustomCategory ? (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <select
+                    className="input input-sm"
+                    value={formData.categoryName}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__CUSTOM__') {
+                        setIsCustomCategory(true);
+                        setFormData({ ...formData, categoryName: '', categoryId: '' });
+                      } else {
+                        const matched = allCategoryOptions.find(c => c.categoryName === val);
+                        setFormData({
+                          ...formData,
+                          categoryName: val,
+                          categoryId: matched?.categoryId || ''
+                        });
+                      }
+                    }}
+                    style={{ width: '100%' }}
+                  >
+                    {allCategoryOptions.map(c => (
+                      <option key={c.categoryName} value={c.categoryName}>
+                        {c.categoryName}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">+ Enter New Category...</option>
+                  </select>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input
+                    type="text"
+                    required
+                    className="input input-sm"
+                    placeholder="Enter new category name"
+                    value={formData.categoryName}
+                    onChange={(e) => setFormData({ ...formData, categoryName: e.target.value, categoryId: '' })}
+                    style={{ width: '100%' }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomCategory(false);
+                      if (!formData.categoryName && allCategoryOptions.length > 0) {
+                        setFormData({
+                          ...formData,
+                          categoryName: allCategoryOptions[0].categoryName,
+                          categoryId: allCategoryOptions[0].categoryId || ''
+                        });
+                      }
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ whiteSpace: 'nowrap', padding: '0 8px' }}
+                    title="Choose from existing categories"
+                  >
+                    Select Existing
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

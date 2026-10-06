@@ -101,19 +101,26 @@ public class CustomerOrderService {
                 FinishedProduct product = finishedProductRepository.findById(itemReq.getProductId())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Finished product not found: " + itemReq.getProductId()));
 
-                BigDecimal rate = itemReq.getRate() != null && itemReq.getRate().compareTo(BigDecimal.ZERO) > 0
-                        ? itemReq.getRate()
-                        : (product.getStandardCost() != null ? product.getStandardCost().multiply(new BigDecimal("1.25")) : new BigDecimal("55.00"));
+                BigDecimal qty = itemReq.getEffectiveQty();
+                if (qty == null || qty.compareTo(BigDecimal.ZERO) <= 0) {
+                    qty = new BigDecimal("1000");
+                }
 
-                BigDecimal lineTotal = itemReq.getOrderedQty().multiply(rate);
+                BigDecimal rate = itemReq.getEffectiveRate() != null
+                        ? itemReq.getEffectiveRate()
+                        : (product.getStandardCost() != null && product.getStandardCost().compareTo(BigDecimal.ZERO) > 0
+                                ? product.getStandardCost().multiply(new BigDecimal("1.25"))
+                                : new BigDecimal("55.00"));
+
+                BigDecimal lineTotal = qty.multiply(rate);
                 subtotal = subtotal.add(lineTotal);
 
                 CustomerOrderItem item = CustomerOrderItem.builder()
                         .order(savedOrder)
                         .product(product)
-                        .orderedQty(itemReq.getOrderedQty())
+                        .orderedQty(qty)
                         .fulfilledQty(BigDecimal.ZERO)
-                        .pendingQty(itemReq.getOrderedQty())
+                        .pendingQty(qty)
                         .rate(rate)
                         .discountAmount(BigDecimal.ZERO)
                         .taxAmount(BigDecimal.ZERO)
