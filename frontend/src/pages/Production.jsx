@@ -58,13 +58,32 @@ export default function Production() {
   };
 
   const handleOpenCompleteModal = (run, stage) => {
-    const inputWeight = run.plannedQty ? Number(run.plannedQty) : 1000.0;
-    const outputWeight = inputWeight * 0.98;
-    const scrapWeight = inputWeight * 0.02;
+    // 1. Find previous stage output if sequence > 1
+    let inputWeight = 0;
+    if (stage.sequenceNo > 1 && Array.isArray(run.stages)) {
+      const prevStage = run.stages.find(s => s.sequenceNo === stage.sequenceNo - 1);
+      if (prevStage && prevStage.outputWeightKg && Number(prevStage.outputWeightKg) > 0) {
+        inputWeight = Number(prevStage.outputWeightKg);
+      }
+    }
+    
+    // Fallback for stage 1 or uncalculated runs
+    if (!inputWeight || inputWeight <= 0) {
+      inputWeight = (stage.inputWeightKg && Number(stage.inputWeightKg) > 0) 
+        ? Number(stage.inputWeightKg) 
+        : ((run.inputWeightKg && Number(run.inputWeightKg) > 0) 
+            ? Number(run.inputWeightKg) 
+            : Number(run.plannedQty || 1000.0));
+    }
+
+    // Default 98% output, 2% scrap (exact mass balance conservation)
+    const outKg = parseFloat((inputWeight * 0.98).toFixed(2));
+    const scrapKg = parseFloat((inputWeight - outKg).toFixed(2));
+
     setStageInput({
       inputWeightKg: inputWeight.toString(),
-      outputWeightKg: outputWeight.toFixed(2),
-      scrapWeightKg: scrapWeight.toFixed(2),
+      outputWeightKg: outKg.toString(),
+      scrapWeightKg: scrapKg.toString(),
     });
     setStageModalData({ run, stage });
   };
@@ -73,11 +92,21 @@ export default function Production() {
     e.preventDefault();
     if (!stageModalData) return;
 
+    const inKg = parseFloat(stageInput.inputWeightKg) || 0;
+    const outKg = parseFloat(stageInput.outputWeightKg) || 0;
+    const scrKg = parseFloat(stageInput.scrapWeightKg) || 0;
+
+    const diff = Math.abs(inKg - (outKg + scrKg));
+    if (diff > 0.001) {
+      alert(`Mass balance mismatch: Input (${inKg} kg) must equal Output (${outKg} kg) + Scrap (${scrKg} kg). Current discrepancy: ${diff.toFixed(2)} kg.`);
+      return;
+    }
+
     try {
       const payload = {
-        inputWeightKg: parseFloat(stageInput.inputWeightKg),
-        outputWeightKg: parseFloat(stageInput.outputWeightKg),
-        scrapWeightKg: parseFloat(stageInput.scrapWeightKg),
+        inputWeightKg: inKg,
+        outputWeightKg: outKg,
+        scrapWeightKg: scrKg,
       };
 
       await productionApi.completeStage(
@@ -382,15 +411,67 @@ export default function Production() {
                 </div>
               </div>
 
-              <div style={{ background: 'var(--bg-surface)', padding: '8px 10px', borderRadius: 'var(--radius-xs)', fontSize: '11px', color: 'var(--text-muted)' }}>
-                ⚖️ <strong>Mass Balance Conservation Rule:</strong> <code style={{ color: 'var(--accent-cyan)' }}>Input = Output + Scrap</code> (Tolerance: ±0.0001 kg).
+              <div style={{
+                background: 'var(--bg-surface)',
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-subtle)',
+                fontSize: '11.5px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Mass Balance Check:</span>
+                  {(() => {
+                    const i = parseFloat(stageInput.inputWeightKg) || 0;
+                    const o = parseFloat(stageInput.outputWeightKg) || 0;
+                    const s = parseFloat(stageInput.scrapWeightKg) || 0;
+                    const balanced = Math.abs(i - (o + s)) <= 0.001 && i > 0;
+                    return (
+                      <span className={`badge ${balanced ? 'badge-emerald' : 'badge-coral'}`} style={{ fontSize: '10.5px' }}>
+                        {balanced ? '✓ Perfectly Balanced' : `⚠️ Unbalanced (Diff: ${(i - (o + s)).toFixed(2)} kg)`}
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Input ({stageInput.inputWeightKg || 0} kg) = Output ({stageInput.outputWeightKg || 0} kg) + Scrap ({stageInput.scrapWeightKg || 0} kg)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inVal = parseFloat(stageInput.inputWeightKg) || 0;
+                      const outVal = parseFloat(stageInput.outputWeightKg) || 0;
+                      const remScrap = Math.max(0, inVal - outVal);
+                      setStageInput({ ...stageInput, scrapWeightKg: remScrap.toFixed(2) });
+                    }}
+                    className="btn btn-ghost btn-xs"
+                    style={{ fontSize: '10.5px', color: '#0284C7', padding: '1px 6px' }}
+                    title="Auto-calculate scrap to match input"
+                  >
+                    ⚡ Auto-Balance Scrap
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setStageModalData(null)} className="btn btn-secondary" style={{ flex: 1 }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                <button
+                  type="submit"
+                  disabled={(() => {
+                    const i = parseFloat(stageInput.inputWeightKg) || 0;
+                    const o = parseFloat(stageInput.outputWeightKg) || 0;
+                    const s = parseFloat(stageInput.scrapWeightKg) || 0;
+                    return i <= 0 || Math.abs(i - (o + s)) > 0.001;
+                  })()}
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                >
                   Submit Stage Completion
                 </button>
               </div>
