@@ -1,5 +1,6 @@
 package com.svp.stockai.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,16 +12,24 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FinishedProductResponse {
-    private Long productId;
-    private String productCode;
+public class CreateFinishedProductRequest {
+
+    @NotBlank(message = "Product name is required")
     private String productName;
+
+    private String productCode;
+
     private Long categoryId;
+
     private String categoryName;
-    private BigDecimal standardCost;
-    private BigDecimal sellingPrice;
-    private BigDecimal reorderLevel;
+
     private Long defaultUomId;
-    private String defaultUomCode;
+
+    private BigDecimal standardCost;
+
+    private BigDecimal sellingPrice;
+
+    private BigDecimal reorderLevel;
+
     private Boolean isActive;
 }

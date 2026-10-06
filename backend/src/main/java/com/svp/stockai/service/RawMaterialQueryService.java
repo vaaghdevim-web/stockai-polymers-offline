@@ -111,6 +111,15 @@ public class RawMaterialQueryService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public void deleteMaterial(Long materialId) {
+        RawMaterial rm = rawMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Raw Material not found with ID: " + materialId));
+        rm.setIsActive(false);
+        rawMaterialRepository.save(rm);
+    }
+
     private RawMaterialResponse toResponse(RawMaterial material) {
         return new RawMaterialResponse(
                 material.getMaterialId(),

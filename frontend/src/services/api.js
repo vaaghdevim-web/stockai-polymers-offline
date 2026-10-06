@@ -157,6 +157,7 @@ export const inventoryApi = {
   getRawMaterials: () => api.get('/inventory/raw-materials'),
   getRawMaterialById: (id) => api.get(`/inventory/raw-materials/${id}`),
   createRawMaterial: (data) => api.post('/inventory/raw-materials/definitions', data),
+  deleteRawMaterial: (id) => api.delete(`/inventory/raw-materials/definitions/${id}`),
   getMaterialCategories: () => api.get('/inventory/raw-materials/categories'),
   getMaterialUoms: () => api.get('/inventory/raw-materials/uoms'),
   receiveRawMaterial: (data) => api.post('/inventory/raw-materials/receipts', data),
@@ -164,10 +165,24 @@ export const inventoryApi = {
   getAvailableStock: (materialId) => api.get(`/inventory/raw-materials/${materialId}/available-stock`),
   getFinishedProducts: (activeOnly = true) => api.get(`/finished-products?activeOnly=${activeOnly}`),
   getFinishedProductById: (id) => api.get(`/finished-products/${id}`),
+  createFinishedProduct: (data) => api.post('/finished-products', data),
+  updateFinishedProduct: (id, data) => api.put(`/finished-products/${id}`, data),
+  deleteFinishedProduct: (id) => api.delete(`/finished-products/${id}`),
+  getProductCategories: () => api.get('/finished-products/categories'),
   getStockTransfers: (status) => api.get('/transfers', { params: status ? { status } : {} }),
   getStockTransferById: (id) => api.get(`/transfers/${id}`),
   createStockTransfer: (data) => api.post('/transfers', data),
   completeStockTransfer: (id) => api.patch(`/transfers/${id}/complete`),
+};
+
+// 3a. Finished Goods Catalog & Specifications
+export const finishedGoodsApi = {
+  getProducts: (activeOnly = true) => api.get(`/finished-products?activeOnly=${activeOnly}`),
+  getProductById: (id) => api.get(`/finished-products/${id}`),
+  createProduct: (data) => api.post('/finished-products', data),
+  updateProduct: (id, data) => api.put(`/finished-products/${id}`, data),
+  deleteProduct: (id) => api.delete(`/finished-products/${id}`),
+  getCategories: () => api.get('/finished-products/categories'),
 };
 
 // 3a. Warehousing & Storage Bins
@@ -257,6 +272,9 @@ export const qualityApi = {
   getInspectionById: (id) => api.get(`/qc/inspections/${id}`),
   createInspection: (data) => api.post('/qc/inspections', data),
   getSpecifications: (params) => api.get('/qc/specifications', { params }),
+  createSpecification: (data) => api.post('/qc/specifications', data),
+  updateSpecification: (id, data) => api.put(`/qc/specifications/${id}`, data),
+  deleteSpecification: (id) => api.delete(`/qc/specifications/${id}`),
   getInspectionsByBatch: (type, id) => api.get(`/qc/inspections/batch/${type}/${id}`),
   getBackwardTrace: (finishedBatchCode) => api.get(`/traceability/backward/${finishedBatchCode}`),
   getForwardTrace: (rawLotOrBatchNo) => api.get(`/traceability/forward/${rawLotOrBatchNo}`),

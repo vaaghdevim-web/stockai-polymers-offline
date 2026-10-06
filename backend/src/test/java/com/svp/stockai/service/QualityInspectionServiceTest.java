@@ -42,6 +42,7 @@ class QualityInspectionServiceTest {
         materialBatchRepo = mock(MaterialBatchRepository.class);
         productionRunRepo = mock(ProductionRunRepository.class);
         finishedBatchRepo = mock(FinishedBatchRepository.class);
+        var finishedProductRepo = mock(FinishedProductRepository.class);
         userRepo = mock(AppUserRepository.class);
         alertWorker = mock(AsyncAlertWorker.class);
 
@@ -52,6 +53,7 @@ class QualityInspectionServiceTest {
                 materialBatchRepo,
                 productionRunRepo,
                 finishedBatchRepo,
+                finishedProductRepo,
                 userRepo
         );
 

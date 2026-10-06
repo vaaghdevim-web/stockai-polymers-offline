@@ -35,6 +35,17 @@ public class RawMaterialInventoryController {
         return rawMaterialQueryService.createRawMaterial(request);
     }
 
+    @DeleteMapping("/definitions/{materialId:[0-9]+}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public java.util.Map<String, Object> deleteRawMaterial(@PathVariable Long materialId) {
+        rawMaterialQueryService.deleteMaterial(materialId);
+        return java.util.Map.of(
+                "success", true,
+                "message", "Raw Material SKU ID " + materialId + " deactivated successfully.",
+                "materialId", materialId
+        );
+    }
+
     @GetMapping("/categories")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public List<com.svp.stockai.entity.MaterialCategory> categories() {

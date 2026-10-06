@@ -20,8 +20,10 @@ import {
   ChevronRight,
   ArrowUpRight,
   GitBranch,
-  Printer
+  Printer,
+  Trash2
 } from 'lucide-react';
+import { inventoryApi } from '../services/api';
 import {
   getRawMaterials,
   getFifoBatches,
@@ -70,6 +72,8 @@ export default function RawMaterials({ onNavigate }) {
 
   // Action Menu Dropdown State
   const [actionMenuOpenId, setActionMenuOpenId] = useState(null);
+  const [materialToDelete, setMaterialToDelete] = useState(null);
+  const [deletingMaterial, setDeletingMaterial] = useState(false);
 
   // Batch Traceability & Genealogy Modal State
   const [showTraceModal, setShowTraceModal] = useState(false);
@@ -604,6 +608,29 @@ export default function RawMaterials({ onNavigate }) {
                               >
                                 <ShoppingCart size={13} /> Reorder Stock
                               </button>
+                              <button
+                                onClick={() => {
+                                  setActionMenuOpenId(null);
+                                  setMaterialToDelete(item);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#EF4444'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#FEF2F2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Trash2 size={13} /> Delete / Deactivate
+                              </button>
                             </div>
                           )}
                         </td>
@@ -1060,6 +1087,66 @@ export default function RawMaterials({ onNavigate }) {
         onClose={() => setShowTraceModal(false)}
         initialBatchId={traceBatchId}
       />
+
+      {/* Delete Raw Material SKU Confirmation Modal */}
+      {materialToDelete && (
+        <div className="modal-backdrop" onClick={() => setMaterialToDelete(null)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px', padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ padding: '8px', background: '#FEF2F2', borderRadius: '50%', color: '#EF4444' }}>
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  Deactivate Raw Material SKU?
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  Are you sure you want to deactivate{' '}
+                  <strong style={{ color: 'var(--text-primary)' }}>
+                    {materialToDelete.materialName} ({materialToDelete.materialCode})
+                  </strong>
+                  ? It will be marked inactive and hidden from new inward batches while preserving historical consumption genealogy.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setMaterialToDelete(null)}
+                disabled={deletingMaterial}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setDeletingMaterial(true);
+                    await inventoryApi.deleteRawMaterial(materialToDelete.materialId);
+                    setMaterialToDelete(null);
+                    fetchMaterials();
+                  } catch (err) {
+                    alert(`Failed to deactivate raw material: ${err.response?.data?.message || err.message}`);
+                  } finally {
+                    setDeletingMaterial(false);
+                  }
+                }}
+                disabled={deletingMaterial}
+                className="btn btn-sm"
+                style={{ background: '#EF4444', color: '#fff', border: 'none' }}
+              >
+                {deletingMaterial ? 'Deactivating...' : 'Confirm Deactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

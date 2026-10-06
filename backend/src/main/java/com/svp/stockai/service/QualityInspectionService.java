@@ -28,6 +28,7 @@ public class QualityInspectionService {
     private final MaterialBatchRepository materialBatchRepository;
     private final ProductionRunRepository productionRunRepository;
     private final FinishedBatchRepository finishedBatchRepository;
+    private final FinishedProductRepository finishedProductRepository;
     private final AppUserRepository appUserRepository;
 
     @Autowired(required = false)
@@ -253,6 +254,64 @@ public class QualityInspectionService {
         }
 
         return specs.stream().map(this::mapSpecToResponse).toList();
+    }
+
+    @Transactional
+    public QcSpecificationResponse createSpecification(CreateQcSpecificationRequest request) {
+        FinishedProduct product = null;
+        if (request.getProductId() != null) {
+            product = finishedProductRepository.findById(request.getProductId()).orElse(null);
+        }
+
+        QcSpecification spec = QcSpecification.builder()
+                .product(product)
+                .inspectionType(request.getInspectionType() != null ? request.getInspectionType().trim() : "Final")
+                .parameterName(request.getParameterName().trim())
+                .minimumValue(request.getMinimumValue())
+                .maximumValue(request.getMaximumValue())
+                .targetValue(request.getTargetValue())
+                .measurementUnit(request.getMeasurementUnit())
+                .specification(request.getSpecification())
+                .isCritical(request.getIsCritical() != null ? request.getIsCritical() : false)
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .build();
+
+        QcSpecification saved = qcSpecificationRepository.save(spec);
+        return mapSpecToResponse(saved);
+    }
+
+    @Transactional
+    public QcSpecificationResponse updateSpecification(Long id, CreateQcSpecificationRequest request) {
+        QcSpecification spec = qcSpecificationRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "QC Specification not found with ID: " + id));
+
+        if (request.getProductId() != null) {
+            finishedProductRepository.findById(request.getProductId()).ifPresent(spec::setProduct);
+        }
+        if (request.getInspectionType() != null && !request.getInspectionType().isBlank()) {
+            spec.setInspectionType(request.getInspectionType().trim());
+        }
+        if (request.getParameterName() != null && !request.getParameterName().isBlank()) {
+            spec.setParameterName(request.getParameterName().trim());
+        }
+        if (request.getMinimumValue() != null) spec.setMinimumValue(request.getMinimumValue());
+        if (request.getMaximumValue() != null) spec.setMaximumValue(request.getMaximumValue());
+        if (request.getTargetValue() != null) spec.setTargetValue(request.getTargetValue());
+        if (request.getMeasurementUnit() != null) spec.setMeasurementUnit(request.getMeasurementUnit());
+        if (request.getSpecification() != null) spec.setSpecification(request.getSpecification());
+        if (request.getIsCritical() != null) spec.setIsCritical(request.getIsCritical());
+        if (request.getIsActive() != null) spec.setIsActive(request.getIsActive());
+
+        QcSpecification updated = qcSpecificationRepository.save(spec);
+        return mapSpecToResponse(updated);
+    }
+
+    @Transactional
+    public void deleteSpecification(Long id) {
+        QcSpecification spec = qcSpecificationRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "QC Specification not found with ID: " + id));
+        spec.setIsActive(false);
+        qcSpecificationRepository.save(spec);
     }
 
     private QualityInspectionResponse mapToResponse(QualityInspection inspection, List<QualityInspectionItem> items) {

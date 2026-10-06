@@ -1,5 +1,6 @@
 package com.svp.stockai.controller;
 
+import com.svp.stockai.dto.CreateQcSpecificationRequest;
 import com.svp.stockai.dto.QcSpecificationResponse;
 import com.svp.stockai.dto.QualityInspectionRequest;
 import com.svp.stockai.dto.QualityInspectionResponse;
@@ -12,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/qc")
@@ -58,5 +60,31 @@ public class QualityInspectionController {
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String inspectionType) {
         return qualityInspectionService.listSpecifications(productId, inspectionType);
+    }
+
+    @PostMapping("/specifications")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public QcSpecificationResponse createSpecification(@Valid @RequestBody CreateQcSpecificationRequest request) {
+        return qualityInspectionService.createSpecification(request);
+    }
+
+    @PutMapping("/specifications/{id}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public QcSpecificationResponse updateSpecification(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateQcSpecificationRequest request) {
+        return qualityInspectionService.updateSpecification(id, request);
+    }
+
+    @DeleteMapping("/specifications/{id}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public Map<String, Object> deleteSpecification(@PathVariable Long id) {
+        qualityInspectionService.deleteSpecification(id);
+        return Map.of(
+                "success", true,
+                "message", "QC Specification parameter ID " + id + " deactivated successfully.",
+                "specificationId", id
+        );
     }
 }
