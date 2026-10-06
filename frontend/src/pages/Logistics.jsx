@@ -17,18 +17,21 @@ import {
   Phone,
   Calendar,
   ShieldCheck,
-  FileText
+  FileText,
+  ShoppingBag
 } from 'lucide-react';
 import { logisticsApi, palletApi } from '../services/api';
 import CreateDispatchModal from '../components/CreateDispatchModal';
 import CreatePalletModal from '../components/CreatePalletModal';
 import PalletLabelModal from '../components/PalletLabelModal';
 import DispatchGatePassModal from '../components/DispatchGatePassModal';
+import CreateCustomerOrderModal from '../components/CreateCustomerOrderModal';
 import BarcodeVisual from '../components/BarcodeVisual';
 
 export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarcodeGenerator }) {
-  const [activeTab, setActiveTab] = useState('pallets'); // 'pallets' | 'dispatches' | 'vehicles' | 'drivers'
+  const [activeTab, setActiveTab] = useState('pallets'); // 'pallets' | 'orders' | 'dispatches' | 'vehicles' | 'drivers'
   const [pallets, setPallets] = useState([]);
+  const [customerOrders, setCustomerOrders] = useState([]);
   const [dispatches, setDispatches] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
@@ -36,6 +39,7 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
   
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [showCreatePalletModal, setShowCreatePalletModal] = useState(false);
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [selectedLabelPallet, setSelectedLabelPallet] = useState(null);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [selectedGatePassDispatch, setSelectedGatePassDispatch] = useState(null);
@@ -52,6 +56,19 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
       setPallets(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err.message || 'Failed to fetch pallets.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCustomerOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await logisticsApi.getCustomerOrders();
+      setCustomerOrders(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch customer orders.');
     } finally {
       setLoading(false);
     }
@@ -99,6 +116,8 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
   useEffect(() => {
     if (activeTab === 'pallets') {
       fetchPallets();
+    } else if (activeTab === 'orders') {
+      fetchCustomerOrders();
     } else if (activeTab === 'dispatches') {
       fetchDispatches();
     } else if (activeTab === 'vehicles') {
@@ -137,6 +156,15 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
     );
   });
 
+  const filteredCustomerOrders = customerOrders.filter((o) => {
+    const q = search.toLowerCase();
+    return (
+      (o.orderNumber && o.orderNumber.toLowerCase().includes(q)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+      (o.status && o.status.toLowerCase().includes(q))
+    );
+  });
+
   const filteredDispatches = dispatches.filter((d) => {
     const q = search.toLowerCase();
     return (
@@ -167,6 +195,7 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
 
   const refreshCurrentTab = () => {
     if (activeTab === 'pallets') fetchPallets();
+    else if (activeTab === 'orders') fetchCustomerOrders();
     else if (activeTab === 'dispatches') fetchDispatches();
     else if (activeTab === 'vehicles') fetchVehicles();
     else if (activeTab === 'drivers') fetchDrivers();
@@ -215,6 +244,16 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
             </button>
           )}
 
+          {activeTab === 'orders' && (
+            <button 
+              onClick={() => setShowCreateOrderModal(true)}
+              className="btn btn-primary btn-sm"
+              style={{ background: '#0284C7', borderColor: '#0284C7' }}
+            >
+              <Plus size={14} /> + Book Sales Order
+            </button>
+          )}
+
           {activeTab === 'dispatches' && (
             <button 
               onClick={() => setShowDispatchModal(true)}
@@ -260,6 +299,12 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
             className={`tab-button ${activeTab === 'pallets' ? 'active' : ''}`}
           >
             <Layers size={14} /> Pallets & GS1 Barcodes ({pallets.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`tab-button ${activeTab === 'orders' ? 'active' : ''}`}
+          >
+            <ShoppingBag size={14} /> Customer Orders ({customerOrders.length})
           </button>
           <button
             onClick={() => setActiveTab('dispatches')}
@@ -385,6 +430,100 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                       No pallets found in warehouse. Click "+ Build Pallet" to stage new finished goods.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 1b: Customer Sales Orders Table */}
+        {activeTab === 'orders' && (
+          <div className="data-table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Order Number</th>
+                  <th>Customer</th>
+                  <th>Product Items</th>
+                  <th style={{ textAlign: 'right' }}>Quantity</th>
+                  <th style={{ textAlign: 'right' }}>Total Value (₹)</th>
+                  <th>Required Delivery</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Dispatch Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomerOrders.map((o) => (
+                  <tr key={o.orderId}>
+                    <td>
+                      <div className="font-mono" style={{ fontWeight: '700', color: '#0284C7' }}>
+                        {o.orderNumber}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Booked: {o.orderDate ? new Date(o.orderDate).toLocaleDateString() : 'Today'}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                        {o.customerName || 'Direct Customer'}
+                      </div>
+                      <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {o.customerCode || `CUST-#${o.customerId}`}
+                      </div>
+                    </td>
+                    <td>
+                      {o.items && o.items.length > 0 ? (
+                        <div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>
+                            {o.items[0].productName || o.items[0].productCode}
+                          </div>
+                          {o.items.length > 1 && (
+                            <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                              +{o.items.length - 1} other item(s)
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Standard PP Bags</span>
+                      )}
+                    </td>
+                    <td className="font-mono" style={{ textAlign: 'right', fontWeight: '700' }}>
+                      {o.items && o.items[0]?.orderedQty
+                        ? `${Number(o.items[0].orderedQty).toLocaleString()} Bags`
+                        : '5,000 Bags'}
+                    </td>
+                    <td className="font-mono" style={{ textAlign: 'right', fontWeight: '700', color: 'var(--accent-emerald)' }}>
+                      ₹{Number(o.grandTotal || o.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="font-mono" style={{ fontSize: '12px' }}>
+                      {o.requiredDate ? new Date(o.requiredDate).toLocaleDateString() : 'Immediate'}
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        o.status === 'Closed' ? 'badge-emerald' : 
+                        o.status === 'Partial' ? 'badge-sky' : 'badge-amber'
+                      }`}>
+                        {o.status || 'OPEN'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={() => setShowDispatchModal(true)}
+                        className="btn btn-secondary btn-xs"
+                        style={{ color: '#0284C7', borderColor: '#BAE6FD', background: '#F0F9FF' }}
+                      >
+                        <Truck size={12} /> Dispatch Outward
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredCustomerOrders.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                      No customer sales orders found. Click "+ Book Sales Order" to record an incoming customer purchase order.
                     </td>
                   </tr>
                 )}
@@ -606,6 +745,12 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
         isOpen={showCreatePalletModal}
         onClose={() => setShowCreatePalletModal(false)}
         onPalletCreated={fetchPallets}
+      />
+
+      <CreateCustomerOrderModal
+        isOpen={showCreateOrderModal}
+        onClose={() => setShowCreateOrderModal(false)}
+        onOrderCreated={fetchCustomerOrders}
       />
 
       <PalletLabelModal

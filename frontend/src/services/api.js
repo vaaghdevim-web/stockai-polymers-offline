@@ -311,6 +311,7 @@ export const logisticsApi = {
   getCustomers: () => api.get('/customers'),
   getCustomerOrders: (params) => api.get('/customers/orders', { params }),
   getCustomerOrdersByCustomer: (customerId) => api.get(`/customers/${customerId}/orders`),
+  createCustomerOrder: (data) => api.post('/customers/orders', data),
   getSuppliers: (activeOnly = true) => api.get('/suppliers', { params: typeof activeOnly === 'boolean' ? { activeOnly } : activeOnly }),
 };
 
@@ -319,6 +320,10 @@ export const procurementApi = {
   getRecommendations: (params) => api.get('/procurement/recommendations', { params }),
   triggerReorderCheck: () => api.post('/procurement/reorder-check'),
   approveRecommendation: (id) => api.patch(`/procurement/recommendations/${id}/approve`),
+  getPurchaseOrders: (params) => api.get('/procurement/purchase-orders', { params }),
+  getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
+  createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
+  approvePurchaseOrder: (id) => api.patch(`/procurement/purchase-orders/${id}/approve`),
 };
 
 // 8. AI Copilot & System Alerts

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FlaskConical, AlertTriangle } from 'lucide-react';
+import { X, FlaskConical, AlertTriangle, CheckCircle2, Sliders, ShieldCheck } from 'lucide-react';
 import { qualityApi, inventoryApi } from '../services/api';
 
 export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
@@ -8,19 +8,18 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [materialBatches, setMaterialBatches] = useState([]);
   const [selectedBatchId, setSelectedBatchId] = useState('');
-  const [remarks, setRemarks] = useState('ASTM D1238 Melt Flow and pycnometer density compliance verification');
-  
-  // Test item measurements
-  const [mfiValue, setMfiValue] = useState('0.95');
-  const [densityValue, setDensityValue] = useState('1.140');
-  const [tensileValue, setTensileValue] = useState('31.5');
-  const [ashValue, setAshValue] = useState('39.8');
-  
+  const [remarks, setRemarks] = useState('ASTM laboratory quality compliance certification verification');
+
+  // Dynamic Specifications
+  const [specifications, setSpecifications] = useState([]);
+  const [testValues, setTestValues] = useState({}); // { [paramKey]: observedValue }
+  const [loadingSpecs, setLoadingSpecs] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load raw materials when modal opens
+  // Load raw materials
   useEffect(() => {
     let isMounted = true;
     const loadMaterials = async () => {
@@ -34,7 +33,7 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
           }
         }
       } catch {
-        // Continue with empty list if error
+        // Fallback
       }
     };
 
@@ -79,7 +78,96 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
     };
   }, [selectedMaterialId]);
 
+  // Load QC Specifications for selected inspection stage
+  useEffect(() => {
+    let isMounted = true;
+    const loadSpecs = async () => {
+      try {
+        setLoadingSpecs(true);
+        const res = await qualityApi.getSpecifications({ inspectionType });
+        if (isMounted) {
+          const specs = Array.isArray(res.data) ? res.data : [];
+          if (specs.length > 0) {
+            setSpecifications(specs);
+            const initialVals = {};
+            specs.forEach((s, idx) => {
+              const key = s.qcSpecificationId || idx;
+              initialVals[key] = s.targetValue != null ? String(s.targetValue) : (s.minimumValue != null ? String(s.minimumValue) : '0');
+            });
+            setTestValues(initialVals);
+          } else {
+            // Fallback default polymer specifications
+            const fallbackSpecs = [
+              {
+                parameterName: 'Melt Flow Index (MFI @ 190°C)',
+                minimumValue: 0.80,
+                maximumValue: 1.20,
+                targetValue: 0.95,
+                measurementUnit: 'g/10min',
+                specification: 'ASTM D1238',
+                isCritical: true,
+              },
+              {
+                parameterName: 'Specific Density',
+                minimumValue: 0.900,
+                maximumValue: 1.250,
+                targetValue: 1.140,
+                measurementUnit: 'g/cm³',
+                specification: 'ASTM D792',
+                isCritical: true,
+              },
+              {
+                parameterName: 'Tensile Strength at Yield',
+                minimumValue: 20.0,
+                maximumValue: 45.0,
+                targetValue: 32.0,
+                measurementUnit: 'MPa',
+                specification: 'ISO 527',
+                isCritical: false,
+              },
+              {
+                parameterName: 'Ash / Mineral Content',
+                minimumValue: 0.0,
+                maximumValue: 50.0,
+                targetValue: 40.0,
+                measurementUnit: '%',
+                specification: 'ASTM D5630',
+                isCritical: false,
+              },
+            ];
+            setSpecifications(fallbackSpecs);
+            const initialVals = {};
+            fallbackSpecs.forEach((s, idx) => {
+              initialVals[idx] = String(s.targetValue);
+            });
+            setTestValues(initialVals);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setSpecifications([]);
+        }
+      } finally {
+        if (isMounted) setLoadingSpecs(false);
+      }
+    };
+
+    if (isOpen) {
+      loadSpecs();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, inspectionType]);
+
   if (!isOpen) return null;
+
+  const handleValueChange = (key, val) => {
+    setTestValues(prev => ({
+      ...prev,
+      [key]: val,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,13 +178,24 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
       return;
     }
 
-    const mfi = parseFloat(mfiValue);
-    const density = parseFloat(densityValue);
-    const tensile = parseFloat(tensileValue);
-    const ash = parseFloat(ashValue);
+    const items = specifications.map((spec, idx) => {
+      const key = spec.qcSpecificationId || idx;
+      const observed = parseFloat(testValues[key]);
+      return {
+        qcSpecificationId: spec.qcSpecificationId || null,
+        parameterName: spec.parameterName,
+        minimumValue: spec.minimumValue != null ? Number(spec.minimumValue) : null,
+        maximumValue: spec.maximumValue != null ? Number(spec.maximumValue) : null,
+        targetValue: spec.targetValue != null ? Number(spec.targetValue) : null,
+        observedValue: isNaN(observed) ? 0 : observed,
+        measurementUnit: spec.measurementUnit || '',
+        specification: spec.specification || 'ASTM Standard',
+        isCritical: !!spec.isCritical,
+      };
+    });
 
-    if (isNaN(mfi) || isNaN(density) || isNaN(tensile) || isNaN(ash)) {
-      setError('Please provide valid numerical test values for all parameters.');
+    if (items.some(it => isNaN(it.observedValue))) {
+      setError('Please enter valid numeric values for all QC measurement parameters.');
       return;
     }
 
@@ -109,48 +208,7 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
         productionRunId: null,
         finishedBatchId: null,
         remarks: remarks.trim(),
-        items: [
-          {
-            parameterName: 'Melt Flow Index (MFI @ 190°C)',
-            minimumValue: 0.80,
-            maximumValue: 1.20,
-            observedValue: mfi,
-            targetValue: 0.95,
-            measurementUnit: 'g/10min',
-            specification: 'ASTM D1238',
-            isCritical: true,
-          },
-          {
-            parameterName: 'Specific Density',
-            minimumValue: 0.900,
-            maximumValue: 1.250,
-            observedValue: density,
-            targetValue: 1.140,
-            measurementUnit: 'g/cm³',
-            specification: 'ASTM D792',
-            isCritical: true,
-          },
-          {
-            parameterName: 'Tensile Strength at Yield',
-            minimumValue: 20.0,
-            maximumValue: 45.0,
-            observedValue: tensile,
-            targetValue: 32.0,
-            measurementUnit: 'MPa',
-            specification: 'ISO 527',
-            isCritical: false,
-          },
-          {
-            parameterName: 'Ash / Mineral Content',
-            minimumValue: 0.0,
-            maximumValue: 50.0,
-            observedValue: ash,
-            targetValue: 40.0,
-            measurementUnit: '%',
-            specification: 'ASTM D5630',
-            isCritical: false,
-          },
-        ],
+        items: items,
       };
 
       await qualityApi.createInspection(payload);
@@ -168,12 +226,12 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px', padding: '20px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FlaskConical size={18} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Log Polymer Laboratory Quality Test
+            <FlaskConical size={20} color="var(--accent-cyan)" />
+            <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>
+              Log Polymer Quality Control Inspection
             </h3>
           </div>
           <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
@@ -183,24 +241,24 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
 
         {error && (
           <div style={{
-            padding: '8px 12px',
+            padding: '10px 14px',
             background: 'rgba(239, 68, 68, 0.12)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: 'var(--radius-sm)',
             color: 'var(--accent-coral)',
             fontSize: '12px',
-            marginBottom: '12px',
+            marginBottom: '14px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            <AlertTriangle size={15} />
+            <AlertTriangle size={16} />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                 Inspection Stage
@@ -237,7 +295,7 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
 
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-              Target Batch Identifier
+              Target Batch Identifier *
             </label>
             <select
               className="select font-mono"
@@ -253,77 +311,99 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
               ) : (
                 materialBatches.map((b) => (
                   <option key={b.batchId} value={b.batchId}>
-                    {b.batchNo} (Lot: {b.lotNumber || 'N/A'}, Qty: {b.availableWeightKg || b.quantityKg || 0} kg)
+                    {b.batchNo} (Lot: {b.lotNumber || 'N/A'}, Stock: {b.availableWeightKg || b.currentWeightKg || b.quantityKg || 0} kg)
                   </option>
                 ))
               )}
             </select>
           </div>
 
-          {/* Test Parameters */}
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xs)', padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-              Lab Test Measurements & ASTM Tolerances
-            </span>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px', fontFamily: 'var(--font-mono)' }}>
-                  MFI (g/10min · ASTM D1238)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  className="input font-mono"
-                  value={mfiValue}
-                  onChange={(e) => setMfiValue(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px', fontFamily: 'var(--font-mono)' }}>
-                  Specific Density (g/cm³ · ASTM D792)
-                </label>
-                <input
-                  type="number"
-                  step="0.001"
-                  required
-                  className="input font-mono"
-                  value={densityValue}
-                  onChange={(e) => setDensityValue(e.target.value)}
-                />
-              </div>
+          {/* Dynamic Specifications & Measurements */}
+          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sliders size={13} /> Dynamic QC Specifications ({specifications.length} Parameters)
+              </span>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                ASTM / ISO Quality Standard
+              </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px', fontFamily: 'var(--font-mono)' }}>
-                  Tensile Strength (MPa · ISO 527)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  className="input font-mono"
-                  value={tensileValue}
-                  onChange={(e) => setTensileValue(e.target.value)}
-                />
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+              {loadingSpecs ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                  Loading laboratory specifications...
+                </div>
+              ) : specifications.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                  No specifications found.
+                </div>
+              ) : (
+                specifications.map((spec, idx) => {
+                  const key = spec.qcSpecificationId || idx;
+                  const currentVal = parseFloat(testValues[key]);
+                  const min = spec.minimumValue != null ? Number(spec.minimumValue) : -Infinity;
+                  const max = spec.maximumValue != null ? Number(spec.maximumValue) : Infinity;
+                  const isOutOfSpec = !isNaN(currentVal) && (currentVal < min || currentVal > max);
 
-              <div>
-                <label style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px', fontFamily: 'var(--font-mono)' }}>
-                  Ash / Mineral Content (% · ASTM D5630)
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  className="input font-mono"
-                  value={ashValue}
-                  onChange={(e) => setAshValue(e.target.value)}
-                />
-              </div>
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 1fr 1.2fr',
+                        gap: '10px',
+                        alignItems: 'center',
+                        background: isOutOfSpec ? 'rgba(239, 68, 68, 0.08)' : 'var(--bg-card)',
+                        border: `1px solid ${isOutOfSpec ? 'rgba(239, 68, 68, 0.35)' : 'var(--border-subtle)'}`,
+                        padding: '8px 12px',
+                        borderRadius: 'var(--radius-xs)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '11.5px', color: 'var(--text-primary)' }}>
+                          {spec.parameterName}
+                          {spec.isCritical && (
+                            <span style={{ marginLeft: '6px', fontSize: '9px', color: 'var(--accent-coral)', fontWeight: '800' }}>[CRITICAL]</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                          Std: {spec.specification || 'ASTM'} · Target: {spec.targetValue ?? 'N/A'} {spec.measurementUnit} (Min: {spec.minimumValue ?? '-'}, Max: {spec.maximumValue ?? '-'})
+                        </div>
+                      </div>
+
+                      <div>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          className="input font-mono"
+                          style={{
+                            fontSize: '12px',
+                            padding: '4px 8px',
+                            borderColor: isOutOfSpec ? 'var(--accent-coral)' : undefined,
+                            color: isOutOfSpec ? 'var(--accent-coral)' : 'var(--text-primary)'
+                          }}
+                          value={testValues[key] ?? ''}
+                          onChange={(e) => handleValueChange(key, e.target.value)}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontFamily: 'var(--font-mono)' }}>
+                        {isOutOfSpec ? (
+                          <span style={{ color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}>
+                            <AlertTriangle size={13} /> OOS / FAIL
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}>
+                            <CheckCircle2 size={13} /> PASS
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -339,11 +419,11 @@ export default function LabTestModal({ isOpen, onClose, onInspectionAdded }) {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
             <button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="btn btn-primary" style={{ flex: 1 }}>
+            <button type="submit" disabled={submitting || loadingBatches} className="btn btn-primary" style={{ flex: 1 }}>
               {submitting ? 'Recording Inspection...' : 'Record QA Certification'}
             </button>
           </div>

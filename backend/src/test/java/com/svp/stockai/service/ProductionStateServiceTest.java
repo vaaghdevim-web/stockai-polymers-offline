@@ -33,7 +33,9 @@ class ProductionStateServiceTest {
                 mock(ProductionUnitRepository.class),
                 mock(MachineRepository.class),
                 mock(AppUserRepository.class),
-                mock(FinishedProductRepository.class)
+                mock(FinishedProductRepository.class),
+                mock(FinishedBatchRepository.class),
+                mock(ProductionOutputRepository.class)
         );
     }
 

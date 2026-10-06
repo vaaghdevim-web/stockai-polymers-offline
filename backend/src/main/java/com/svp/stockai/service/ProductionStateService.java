@@ -31,6 +31,8 @@ public class ProductionStateService {
     private final MachineRepository machineRepository;
     private final AppUserRepository appUserRepository;
     private final FinishedProductRepository finishedProductRepository;
+    private final FinishedBatchRepository finishedBatchRepository;
+    private final ProductionOutputRepository productionOutputRepository;
 
     @Transactional
     public ProductionRunResponse createProductionRun(CreateProductionRunRequest request, String username) {
@@ -250,6 +252,19 @@ public class ProductionStateService {
                 .compareTo(BALANCE_TOLERANCE) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "inputWeightKg must equal outputWeightKg + scrapWeightKg");
         }
+
+        if (stage.getSequenceNo() > 1) {
+            ProductionStage prevStage = stages.stream()
+                    .filter(s -> s.getSequenceNo() == stage.getSequenceNo() - 1)
+                    .findFirst().orElse(null);
+            if (prevStage != null && prevStage.getOutputWeightKg() != null &&
+                    prevStage.getOutputWeightKg().compareTo(BigDecimal.ZERO) > 0 &&
+                    request.inputWeightKg().compareTo(prevStage.getOutputWeightKg().add(BALANCE_TOLERANCE)) > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Input weight (" + request.inputWeightKg() + " kg) cannot exceed previous stage output (" + prevStage.getOutputWeightKg() + " kg)");
+            }
+        }
+
         OffsetDateTime now = OffsetDateTime.now();
         stage.setInputWeightKg(request.inputWeightKg());
         stage.setOutputWeightKg(request.outputWeightKg());
@@ -263,9 +278,53 @@ public class ProductionStateService {
                 .scrapWeightKg(request.scrapWeightKg()).startedAt(stage.getStartedAt()).completedAt(now).build());
         stages.stream().filter(next -> next.getSequenceNo() == stage.getSequenceNo() + 1 && "Pending".equals(next.getStatus()))
                 .findFirst().ifPresent(next -> { next.setStatus("Ready"); productionStageRepository.save(next); });
-        if (stages.stream().allMatch(item -> "Completed".equals(item.getStatus()))) {
+        
+        if (stages.stream().allMatch(item -> "Completed".equals(item.getStatus()) || item.getStageId().equals(stage.getStageId()))) {
             var run = productionRunRepository.findById(productionId).orElseThrow(() -> notFound("Production run", productionId));
-            run.setStatus("Completed"); run.setEndDatetime(now);
+            run.setStatus("Completed");
+            run.setEndDatetime(now);
+            productionRunRepository.save(run);
+
+            if (finishedBatchRepository != null && productionOutputRepository != null) {
+                String fbBatchNo = "FB-" + run.getProductionNumber();
+                if (finishedBatchRepository.findByBatchNo(fbBatchNo).isEmpty()) {
+                    FinishedProduct product = (run.getBom() != null && run.getBom().getProduct() != null) ? run.getBom().getProduct() :
+                            finishedProductRepository.findAll().stream().findFirst().orElse(null);
+                    if (product != null) {
+                        BigDecimal outputKg = request.outputWeightKg() != null ? request.outputWeightKg() : BigDecimal.ZERO;
+                        BigDecimal bagWeightG = new BigDecimal("75.00");
+                        BigDecimal bagsProduced = BigDecimal.ZERO;
+                        if (bagWeightG.compareTo(BigDecimal.ZERO) > 0) {
+                            bagsProduced = outputKg.multiply(new BigDecimal("1000")).divide(bagWeightG, 0, java.math.RoundingMode.HALF_UP);
+                        }
+
+                        FinishedBatch fb = FinishedBatch.builder()
+                                .product(product)
+                                .batchNo(fbBatchNo)
+                                .productionDate(java.time.LocalDate.now())
+                                .expiryDate(java.time.LocalDate.now().plusYears(1))
+                                .qtyProduced(outputKg)
+                                .outputWeightKg(outputKg)
+                                .inputWeightKg(request.inputWeightKg())
+                                .scrapWeightKg(request.scrapWeightKg())
+                                .bagsProduced(bagsProduced)
+                                .averageBagWeightG(bagWeightG)
+                                .qualityStatus("Available")
+                                .isActive(true)
+                                .build();
+                        FinishedBatch savedFb = finishedBatchRepository.save(fb);
+
+                        ProductionOutput prodOut = ProductionOutput.builder()
+                                .productionRun(run)
+                                .finishedBatch(savedFb)
+                                .producedQty(outputKg)
+                                .outputWeightKg(outputKg)
+                                .outputBags(bagsProduced)
+                                .build();
+                        productionOutputRepository.save(prodOut);
+                    }
+                }
+            }
         }
         return response(productionStageRepository.save(stage));
     }
