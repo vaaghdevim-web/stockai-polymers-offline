@@ -326,6 +326,13 @@ export const procurementApi = {
   approvePurchaseOrder: (id) => api.patch(`/procurement/purchase-orders/${id}/approve`),
 };
 
+// 8a. Analytics & Time-Series Dashboard
+export const analyticsApi = {
+  getValuationTrend: (timeframe = '6M') => api.get('/analytics/dashboard/trend', { params: { timeframe } }),
+  getRecentMovements: () => api.get('/analytics/dashboard/movements'),
+  getDashboardKpis: () => api.get('/analytics/dashboard/kpis'),
+};
+
 // 8. AI Copilot & System Alerts
 export const aiApi = {
   query: (queryOrPrompt, context = null, filters = null) => {

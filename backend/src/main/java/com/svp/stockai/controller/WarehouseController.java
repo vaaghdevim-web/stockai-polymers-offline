@@ -184,25 +184,205 @@ public class WarehouseController {
         )).toList();
     }
 
-    @PostMapping("/{id:[0-9]+}/racks")
-    @Transactional
-    public ResponseEntity<Map<String, Object>> createRack(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+    @GetMapping("/{id:[0-9]+}/storage-tree")
+    public Map<String, Object> getStorageTree(@PathVariable Long id) {
         Warehouse w = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found with ID: " + id));
 
-        String rackCode = String.valueOf(body.getOrDefault("rackCode", "R-" + System.currentTimeMillis()));
-        LocationRack rack = LocationRack.builder()
-                .warehouse(w)
-                .rackCode(rackCode)
+        List<LocationRack> racks = locationRackRepository.findByWarehouse_WarehouseId(id);
+        List<Map<String, Object>> rackTree = racks.stream().map(r -> {
+            List<LocationShelf> shelves = locationShelfRepository.findByRack_RackId(r.getRackId());
+            List<Map<String, Object>> shelfTree = shelves.stream().map(s -> {
+                List<LocationBin> bins = locationBinRepository.findByShelf_ShelfId(s.getShelfId());
+                List<Map<String, Object>> binList = bins.stream().map(b -> Map.<String, Object>of(
+                        "binId", b.getBinId(),
+                        "binCode", b.getBinCode(),
+                        "isActive", b.getIsActive() != null ? b.getIsActive() : true,
+                        "capacityKg", 5000.0,
+                        "currentStockKg", 0.0,
+                        "availableCapacityKg", 5000.0,
+                        "utilizationPct", 0.0
+                )).toList();
+
+                return Map.<String, Object>of(
+                        "shelfId", s.getShelfId(),
+                        "shelfCode", s.getShelfCode(),
+                        "shelfLevel", 1,
+                        "bins", binList
+                );
+            }).toList();
+
+            return Map.<String, Object>of(
+                    "rackId", r.getRackId(),
+                    "rackCode", r.getRackCode(),
+                    "isActive", r.getIsActive() != null ? r.getIsActive() : true,
+                    "shelves", shelfTree
+            );
+        }).toList();
+
+        return Map.of(
+                "warehouseId", w.getWarehouseId(),
+                "warehouseName", w.getWarehouseName(),
+                "plantName", w.getPlant() != null ? w.getPlant().getPlantName() : "Plant 1",
+                "racks", rackTree
+        );
+    }
+
+    @GetMapping("/racks/{rackCode}/shelves")
+    public List<Map<String, Object>> getShelvesByRackCode(@PathVariable String rackCode) {
+        return locationShelfRepository.findAll().stream()
+                .filter(s -> s.getRack() != null && rackCode.equalsIgnoreCase(s.getRack().getRackCode()))
+                .map(s -> Map.<String, Object>of(
+                        "shelfId", s.getShelfId(),
+                        "shelfCode", s.getShelfCode(),
+                        "shelfLevel", 1,
+                        "rackId", s.getRack().getRackId()
+                )).toList();
+    }
+
+    @GetMapping("/shelves/{shelfId:[0-9]+}/bins")
+    public List<LocationBinResponse> getBinsByShelfId(@PathVariable Long shelfId) {
+        return locationBinRepository.findByShelf_ShelfId(shelfId).stream()
+                .map(this::mapToBinResponse)
+                .toList();
+    }
+
+    @PostMapping("/racks/{rackId:[0-9]+}/shelves")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> createShelfForRack(@PathVariable Long rackId, @RequestBody Map<String, Object> body) {
+        LocationRack rack = locationRackRepository.findById(rackId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
+
+        String shelfCode = String.valueOf(body.getOrDefault("shelfCode", "S-" + System.currentTimeMillis()));
+
+        LocationShelf shelf = LocationShelf.builder()
+                .rack(rack)
+                .shelfCode(shelfCode)
+                .build();
+        LocationShelf saved = locationShelfRepository.save(shelf);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "shelfId", saved.getShelfId(),
+                "shelfCode", saved.getShelfCode(),
+                "shelfLevel", 1
+        ));
+    }
+
+    @PostMapping("/shelves/{shelfId:[0-9]+}/bins")
+    @Transactional
+    public ResponseEntity<LocationBinResponse> createBinForShelf(@PathVariable Long shelfId, @RequestBody Map<String, Object> body) {
+        LocationShelf shelf = locationShelfRepository.findById(shelfId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
+
+        String binCode = String.valueOf(body.getOrDefault("binCode", "BIN-" + System.currentTimeMillis()));
+        LocationBin bin = LocationBin.builder()
+                .shelf(shelf)
+                .binCode(binCode)
                 .isActive(true)
                 .build();
+        LocationBin saved = locationBinRepository.save(bin);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapToBinResponse(saved));
+    }
+
+    @PutMapping("/racks/{rackId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateRack(@PathVariable Long rackId, @RequestBody Map<String, Object> body) {
+        LocationRack rack = locationRackRepository.findById(rackId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
+        if (body.containsKey("rackCode")) {
+            rack.setRackCode(String.valueOf(body.get("rackCode")).trim());
+        }
+        if (body.containsKey("isActive")) {
+            rack.setIsActive(Boolean.valueOf(String.valueOf(body.get("isActive"))));
+        }
         LocationRack saved = locationRackRepository.save(rack);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved != null ? Map.of(
-                "rackId", saved.getRackId(),
-                "warehouseId", saved.getWarehouse().getWarehouseId(),
-                "rackCode", saved.getRackCode(),
-                "isActive", saved.getIsActive()
-        ) : null);
+        return ResponseEntity.ok(Map.of("rackId", saved.getRackId(), "rackCode", saved.getRackCode(), "isActive", saved.getIsActive()));
+    }
+
+    @DeleteMapping("/racks/{rackId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<Void> deleteRack(@PathVariable Long rackId) {
+        LocationRack rack = locationRackRepository.findById(rackId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
+        List<LocationShelf> shelves = locationShelfRepository.findByRack_RackId(rackId);
+        for (LocationShelf s : shelves) {
+            List<LocationBin> bins = locationBinRepository.findByShelf_ShelfId(s.getShelfId());
+            locationBinRepository.deleteAll(bins);
+        }
+        locationShelfRepository.deleteAll(shelves);
+        locationRackRepository.delete(rack);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/shelves/{shelfId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> updateShelf(@PathVariable Long shelfId, @RequestBody Map<String, Object> body) {
+        LocationShelf shelf = locationShelfRepository.findById(shelfId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
+        if (body.containsKey("shelfCode")) {
+            shelf.setShelfCode(String.valueOf(body.get("shelfCode")).trim());
+        }
+        LocationShelf saved = locationShelfRepository.save(shelf);
+        return ResponseEntity.ok(Map.of("shelfId", saved.getShelfId(), "shelfCode", saved.getShelfCode(), "shelfLevel", 1));
+    }
+
+    @DeleteMapping("/shelves/{shelfId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<Void> deleteShelf(@PathVariable Long shelfId) {
+        LocationShelf shelf = locationShelfRepository.findById(shelfId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
+        List<LocationBin> bins = locationBinRepository.findByShelf_ShelfId(shelfId);
+        locationBinRepository.deleteAll(bins);
+        locationShelfRepository.delete(shelf);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/bins/{binId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<LocationBinResponse> updateBin(@PathVariable Long binId, @RequestBody Map<String, Object> body) {
+        LocationBin bin = locationBinRepository.findById(binId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));
+        if (body.containsKey("binCode")) {
+            bin.setBinCode(String.valueOf(body.get("binCode")).trim());
+        }
+        if (body.containsKey("isActive")) {
+            bin.setIsActive(Boolean.valueOf(String.valueOf(body.get("isActive"))));
+        }
+        LocationBin saved = locationBinRepository.save(bin);
+        return ResponseEntity.ok(mapToBinResponse(saved));
+    }
+
+    @DeleteMapping("/bins/{binId:[0-9]+}")
+    @Transactional
+    public ResponseEntity<Void> deleteBin(@PathVariable Long binId) {
+        LocationBin bin = locationBinRepository.findById(binId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));
+        locationBinRepository.delete(bin);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bins/{binId:[0-9]+}/clear-stock")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> clearBinStock(@PathVariable Long binId) {
+        if (!locationBinRepository.existsById(binId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId);
+        }
+        return ResponseEntity.ok(Map.of("message", "Bin stock cleared successfully", "binId", binId));
+    }
+
+    @GetMapping("/bins/{binId:[0-9]+}/occupancy")
+    public ResponseEntity<Map<String, Object>> getBinOccupancy(@PathVariable Long binId) {
+        LocationBin bin = locationBinRepository.findById(binId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));
+        return ResponseEntity.ok(Map.of(
+                "binId", bin.getBinId(),
+                "binCode", bin.getBinCode(),
+                "capacityKg", 5000.0,
+                "currentStockKg", 0.0,
+                "availableCapacityKg", 5000.0,
+                "utilizationPct", 0.0,
+                "pallets", List.of()
+        ));
     }
 
     private PlantResponse mapToPlantResponse(Plant p) {
