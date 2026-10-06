@@ -31,6 +31,8 @@ import {
 import { formatPlantName } from '../utils/brand';
 import { useAuth } from '../context/AuthContext';
 import CreateWarehouseModal from '../components/CreateWarehouseModal';
+import EditWarehouseModal from '../components/EditWarehouseModal';
+import DeleteWarehouseModal from '../components/DeleteWarehouseModal';
 import CreateRackModal from '../components/CreateRackModal';
 import EditRackModal from '../components/EditRackModal';
 import DeleteRackModal from '../components/DeleteRackModal';
@@ -59,6 +61,10 @@ export default function WarehouseManagement() {
 
   // Creation & Edit/Delete Modals State
   const [isCreateWarehouseOpen, setIsCreateWarehouseOpen] = useState(false);
+  const [editingWarehouse, setEditingWarehouse] = useState(null);
+  const [isEditWarehouseOpen, setIsEditWarehouseOpen] = useState(false);
+  const [deletingWarehouse, setDeletingWarehouse] = useState(null);
+  const [isDeleteWarehouseOpen, setIsDeleteWarehouseOpen] = useState(false);
   const [isCreateRackOpen, setIsCreateRackOpen] = useState(false);
   const [editingRack, setEditingRack] = useState(null);
   const [isEditRackOpen, setIsEditRackOpen] = useState(false);
@@ -451,9 +457,41 @@ export default function WarehouseManagement() {
                       <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         Type: <strong>{wh.type || 'Standard'}</strong>
                       </span>
-                      <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
-                        WH ID: #{wh.warehouseId}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>
+                          WH ID: #{wh.warehouseId}
+                        </span>
+                        {canManageStorage && (
+                          <div style={{ display: 'flex', gap: '2px', marginLeft: '4px' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingWarehouse(wh);
+                                setIsEditWarehouseOpen(true);
+                              }}
+                              className="btn btn-ghost btn-xs"
+                              style={{ padding: '2px 4px', color: 'var(--text-muted)' }}
+                              title="Edit this warehouse"
+                            >
+                              <Pencil size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingWarehouse(wh);
+                                setIsDeleteWarehouseOpen(true);
+                              }}
+                              className="btn btn-ghost btn-xs"
+                              style={{ padding: '2px 4px', color: 'var(--accent-coral)' }}
+                              title="Delete this warehouse"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -528,6 +566,28 @@ export default function WarehouseManagement() {
 
                   {canManageStorage && (
                     <>
+                      <button
+                        onClick={() => {
+                          setEditingWarehouse(selectedWarehouse);
+                          setIsEditWarehouseOpen(true);
+                        }}
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                        title="Edit warehouse details (name, plant, storage type)"
+                      >
+                        <Pencil size={13} /> Edit Warehouse
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDeletingWarehouse(selectedWarehouse);
+                          setIsDeleteWarehouseOpen(true);
+                        }}
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#DC2626', borderColor: '#FECACA' }}
+                        title="Delete or deactivate this warehouse"
+                      >
+                        <Trash2 size={13} color="#DC2626" /> Delete Warehouse
+                      </button>
                       <button
                         onClick={handleClearAllWarehouseStock}
                         className="btn btn-secondary btn-sm"
@@ -1311,6 +1371,51 @@ export default function WarehouseManagement() {
           if (newWh?.warehouseId) {
             setSelectedWarehouseId(newWh.warehouseId);
             await fetchStorageHierarchy(newWh.warehouseId, newWh);
+          }
+        }}
+      />
+
+      {/* Edit Warehouse Modal */}
+      <EditWarehouseModal
+        isOpen={isEditWarehouseOpen}
+        warehouse={editingWarehouse || selectedWarehouse}
+        onClose={() => {
+          setIsEditWarehouseOpen(false);
+          setEditingWarehouse(null);
+        }}
+        onWarehouseUpdated={async (updatedWh) => {
+          await fetchWarehouses();
+          if (updatedWh?.warehouseId) {
+            await fetchStorageHierarchy(updatedWh.warehouseId, updatedWh);
+          }
+        }}
+      />
+
+      {/* Delete Warehouse Modal */}
+      <DeleteWarehouseModal
+        isOpen={isDeleteWarehouseOpen}
+        warehouse={deletingWarehouse || selectedWarehouse}
+        storageTree={storageTree}
+        onClose={() => {
+          setIsDeleteWarehouseOpen(false);
+          setDeletingWarehouse(null);
+        }}
+        onWarehouseDeleted={async (deletedId) => {
+          try {
+            const res = await getWarehouses();
+            const list = Array.isArray(res.data) ? res.data : [];
+            setWarehouses(list);
+            const remaining = list.filter((w) => w.warehouseId !== deletedId);
+            if (remaining.length > 0) {
+              setSelectedWarehouseId(remaining[0].warehouseId);
+              await fetchStorageHierarchy(remaining[0].warehouseId, remaining[0]);
+            } else {
+              setSelectedWarehouseId(null);
+              setStorageTree(null);
+              setFlatBins([]);
+            }
+          } catch (err) {
+            console.error('Failed to refresh warehouses after deletion:', err);
           }
         }}
       />

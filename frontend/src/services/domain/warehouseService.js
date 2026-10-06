@@ -331,6 +331,22 @@ export const createWarehouse = async (data) => {
 };
 
 /**
+ * Updates an existing warehouse.
+ * Endpoint: PUT /api/v1/warehouses/{id}
+ */
+export const updateWarehouse = async (id, data) => {
+  return warehouseApi.updateWarehouse(id, data);
+};
+
+/**
+ * Deletes or deactivates a warehouse.
+ * Endpoint: DELETE /api/v1/warehouses/{id}
+ */
+export const deleteWarehouse = async (id) => {
+  return warehouseApi.deleteWarehouse(id);
+};
+
+/**
  * Retrieves all registered plants.
  * Endpoint: GET /api/v1/warehouses/plants
  */
