@@ -1,0 +1,151 @@
+﻿services:
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: stockai-offline-nginx
+    restart: unless-stopped
+    ports:
+      - "18082:80"
+    volumes:
+      - ./nginx/offline.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      stockai-app:
+        condition: service_healthy
+    networks:
+      - frontend-network
+
+  stockai-app:
+    image: stockai-offline-app:1.0.3
+    container_name: stockai-offline-app
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: offline
+
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-stockai}
+      DB_USERNAME: ${DB_USERNAME:-stockai}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be provided}
+
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-20}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-5}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be provided}
+
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be provided}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-3600000}
+
+      IOT_DEVICE_SALT: ${IOT_DEVICE_SALT:?IOT_DEVICE_SALT must be provided}
+      IOT_DEVICE_KEY: ${IOT_DEVICE_KEY:?IOT_DEVICE_KEY must be provided}
+
+      MFA_ENFORCED: ${MFA_ENFORCED:-true}
+
+      KAFKA_ENABLED: "false"
+
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:18082}
+
+      PORT: 8080
+
+    volumes:
+      - stockai-storage:/app/storage
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+    networks:
+      - frontend-network
+      - backend-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockai-offline-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stockai}
+      POSTGRES_USER: ${DB_USERNAME:-stockai}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be provided}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../../backend/src/main/resources/db/schema_v2.4.sql:/docker-entrypoint-initdb.d/01_schema_v2.4.sql:ro
+      - ../../backend/src/main/resources/db/indexes_migration.sql:/docker-entrypoint-initdb.d/02_indexes_migration.sql:ro
+      - ../../backend/src/main/resources/db/security_user_password_migration.sql:/docker-entrypoint-initdb.d/03_security_user_password_migration.sql:ro
+      - ../../backend/src/main/resources/db/seed_factory_master_data.sql:/docker-entrypoint-initdb.d/04_seed_factory_master_data.sql:ro
+      - ./db/03_machine_telemetry_log.sql:/docker-entrypoint-initdb.d/05_machine_telemetry_log.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-stockai} -d ${DB_NAME:-stockai}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: stockai-offline-redis
+    restart: unless-stopped
+    command:
+      [
+        "sh",
+        "-c",
+        "redis-server --requirepass \"$${REDIS_PASSWORD}\""
+      ]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be provided}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend-network
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: stockai-offline-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - backend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+
+  backend-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  stockai-storage:

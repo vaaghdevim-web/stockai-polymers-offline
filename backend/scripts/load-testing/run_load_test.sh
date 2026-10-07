@@ -17,5 +17,5 @@ else
     echo "[WARN] k6 executable is not installed in PATH."
     echo "[INFO] Running native in-process JUnit multi-threaded load benchmark suite instead..."
     cd "$SCRIPT_DIR/../.."
-    ./mvnw test -Dtest=TelemetryBurstRateLoadTest -Dmaven.compiler.release=23
+    ./mvnw test -Dtest=TelemetryBurstRateLoadTest -Dmaven.compiler.release=21
 fi

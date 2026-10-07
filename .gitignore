@@ -1,5 +1,5 @@
-# ============================================================
-# StockAI Polymers - Production Repository
+﻿# ============================================================
+# StockAI Polymers - Offline Factory Repository
 # ============================================================
 
 # ------------------------------------------------------------
@@ -32,9 +32,13 @@ credentials/
 **/.vite/
 **/.cache/
 
-# Playwright
+# ------------------------------------------------------------
+# Playwright / test output
+# ------------------------------------------------------------
 **/playwright-report/
 **/test-results/
+coverage/
+newman/
 
 # ------------------------------------------------------------
 # Logs / runtime data
@@ -45,6 +49,11 @@ storage/
 **/storage/
 tmp/
 **/tmp/
+
+# Offline MQTT runtime data and credentials
+**/deployment/offline/mosquitto/passwd
+**/deployment/offline/mosquitto/data/
+**/deployment/offline/mosquitto/log/
 
 # ------------------------------------------------------------
 # IDE
@@ -66,11 +75,13 @@ Thumbs.db
 *.swp
 
 # ------------------------------------------------------------
-# Test / generated reports
+# Generated reports / artifacts
 # ------------------------------------------------------------
-newman/
-**/newman-results.json
-coverage/
+**/reports/
+**/*-results*.json
+**/effective-pom/
+**/k6-*.json
+**/k6-*.txt
 
 # ------------------------------------------------------------
 # Terraform
@@ -78,10 +89,10 @@ coverage/
 **/.terraform/
 *.tfstate
 *.tfstate.*
-crash.log
-crash.*.log
 *.tfvars
 *.tfvars.json
+*.tfplan
+tfplan
 
 # ------------------------------------------------------------
 # Temporary / backup files
@@ -89,48 +100,22 @@ crash.*.log
 *.bak
 *.backup
 *.pre-production-backup
-
-# Diagnostics / generated artifacts
-**/diag.txt
-**/reports/
-**/*-results*.json
-**/effective-pom/
-
-# MQTT credentials
-**/mosquitto/passwd
-
-# ------------------------------------------------------------
-# Terraform plans / local backups
-# ------------------------------------------------------------
-*.tfplan
-tfplan
 **/*.backup-*
 **/*.before-*
 **/terraform.tfvars.backup-*
 
 # ------------------------------------------------------------
-# Terraform diagnostic/task-definition artifacts
+# Diagnostics
 # ------------------------------------------------------------
-**/ecs-db-*.json
-**/taskdef-*.json
-**/container-definitions-*.json
-**/*-plan.txt
-
-# ------------------------------------------------------------
-# Load-test generated output
-# ------------------------------------------------------------
-**/k6-*.json
-**/k6-*.txt
-
-# ------------------------------------------------------------
-# Temporary build/debug output
-# ------------------------------------------------------------
+**/diag.txt
 **/maven-build-error.txt
-
-# Terraform plan output
 plan.txt
 
-**/*.backup-*
+# Generated Maven dependency report
+backend/dependency-tree.txt
 
-# Java compiled artifacts
-**/*.class
+deployment/offline/backups/
+
+deployment/offline/backups/
+
+deployment/offline/logs/

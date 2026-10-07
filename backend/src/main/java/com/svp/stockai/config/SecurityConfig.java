@@ -58,10 +58,19 @@ public class SecurityConfig {
                         // Unconditionally permit HTTP OPTIONS preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                         .permitAll()
-
-                        // Login API must be accessible without JWT
-                        .requestMatchers("/api/v1/auth/**")
+                        // Only login and token refresh are public.
+                        // Logout and MFA management require an authenticated JWT.
+                        .requestMatchers(
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh"
+                        )
                         .permitAll()
+
+                        .requestMatchers(
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/mfa/**"
+                        )
+                        .authenticated()
 
                         // Health check can remain public
                         .requestMatchers("/actuator/health")

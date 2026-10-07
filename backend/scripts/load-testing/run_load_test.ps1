@@ -19,5 +19,5 @@ if (Get-Command k6 -ErrorAction SilentlyContinue) {
     Write-Host "[INFO] To install k6 on Windows, run: winget install k6 --source winget" -ForegroundColor Yellow
     Write-Host "[INFO] Running native in-process JUnit multi-threaded load benchmark suite instead..." -ForegroundColor Cyan
     Set-Location -Path "$PSScriptRoot\..\.."
-    .\mvnw.cmd test "-Dtest=TelemetryBurstRateLoadTest" "-Dmaven.compiler.release=23"
+    .\mvnw.cmd test "-Dtest=TelemetryBurstRateLoadTest" "-Dmaven.compiler.release=21"
 }

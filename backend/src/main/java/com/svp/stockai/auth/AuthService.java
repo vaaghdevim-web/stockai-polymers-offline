@@ -65,7 +65,9 @@ public class AuthService {
 
         // 5. Enforce MFA for Administrators and privileged/MFA-enabled users
         boolean isAdmin = roles.contains("ADMIN");
-        boolean mfaRequired = isAdmin || Boolean.TRUE.equals(user.getMfaEnabled()) || mfaEnforced;
+        boolean isSupervisor = roles.contains("SUPERVISOR");
+        boolean mfaRequired = Boolean.TRUE.equals(user.getMfaEnabled())
+                || (mfaEnforced && (isAdmin || isSupervisor));
 
         if (mfaRequired) {
             if (request.getTotpCode() == null || request.getTotpCode().isBlank()) {

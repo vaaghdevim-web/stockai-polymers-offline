@@ -1,6 +1,6 @@
 # ==============================================================================
 # Multi-Stage Production Dockerfile for SVP StockAI Application
-# Base: Eclipse Temurin OpenJDK 23 (Alpine Linux)
+# Base: Eclipse Temurin OpenJDK 21 (Alpine Linux)
 # Target: Minimal attack surface, unprivileged non-root user (UID 10001)
 # ==============================================================================
 

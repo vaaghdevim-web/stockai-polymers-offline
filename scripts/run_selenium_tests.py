@@ -31,7 +31,7 @@ def generate_totp(secret_base32):
     return f"{code:06d}"
 
 def get_auth_tokens():
-    totp = generate_totp("STOCKAIADMINMFA2")
+    totp = generate_totp(TEST_MFA_SECRET)
     data = json.dumps({"usernameOrEmail": "admin", "password": "admin123", "totpCode": totp}).encode('utf-8')
     req = urllib.request.Request("http://localhost:18080/api/v1/auth/login", data=data, headers={"Content-Type": "application/json"})
     try:

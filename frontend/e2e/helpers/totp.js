@@ -30,7 +30,7 @@ function base32ToBuffer(str) {
  * @param {number} timeOffsetSteps Number of 30-second steps to offset (default 0)
  * @returns {string} 6-digit TOTP string
  */
-export function generateTotp(secret = 'STOCKAIADMINMFA2', timeOffsetSteps = 0) {
+export function generateTotp(secret, timeOffsetSteps = 0) {
   const timeStep = Math.floor(Date.now() / 1000 / 30) + timeOffsetSteps;
   const buffer = Buffer.alloc(8);
   buffer.writeBigInt64BE(BigInt(timeStep), 0);

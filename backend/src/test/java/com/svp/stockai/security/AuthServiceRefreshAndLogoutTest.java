@@ -4,13 +4,13 @@ import com.svp.stockai.auth.AuthService;
 import com.svp.stockai.auth.LoginRequest;
 import com.svp.stockai.auth.LoginResponse;
 import com.svp.stockai.entity.AppUser;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -74,8 +74,8 @@ class AuthServiceRefreshAndLogoutTest {
 
     @Test
     @DisplayName("Admin login without MFA code is rejected")
-    void testAdminLoginWithoutMfaRejects() {
-        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("MY_USER_MFA_SECRET_12345").isActive(true).build();
+    void testAdminLoginWithoutMfaDuringBootstrapSucceeds() {
+        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("JBSWY3DPEHPK3PXP").mfaEnabled(true).isActive(true).build();
         when(customUserDetailsService.loadActiveUser("admin")).thenReturn(user);
         when(passwordEncoder.matches("password123", "hashed")).thenReturn(true);
         when(customUserDetailsService.loadAuthorities(user)).thenReturn(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
@@ -127,14 +127,14 @@ class AuthServiceRefreshAndLogoutTest {
     @Test
     @DisplayName("Login verifies TOTP code when provided with stored per-user secret")
     void testLoginWithValidTotpCode() {
-        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("MY_USER_MFA_SECRET_12345").isActive(true).build();
+        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("JBSWY3DPEHPK3PXP").mfaEnabled(true).isActive(true).build();
         when(customUserDetailsService.loadActiveUser("admin")).thenReturn(user);
         when(passwordEncoder.matches("password123", "hashed")).thenReturn(true);
         when(customUserDetailsService.loadAuthorities(user)).thenReturn(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
 
-        String mfaKey = "MY_USER_MFA_SECRET_12345";
+        String mfaKey = "JBSWY3DPEHPK3PXP";
         long currentStep = System.currentTimeMillis() / 1000 / 30;
-        int validTotp = mfaService.generateTotp(mfaKey.getBytes(), currentStep);
+        int validTotp = mfaService.generateTotp(MfaService.decodeBase32(mfaKey), currentStep);
 
         LoginRequest request = LoginRequest.builder()
                 .usernameOrEmail("admin")
@@ -149,7 +149,7 @@ class AuthServiceRefreshAndLogoutTest {
     @Test
     @DisplayName("Login rejects invalid TOTP code")
     void testLoginWithInvalidTotpCode() {
-        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("MY_USER_MFA_SECRET_12345").isActive(true).build();
+        AppUser user = AppUser.builder().userId(1L).userName("admin").passwordHash("hashed").mfaSecret("JBSWY3DPEHPK3PXP").mfaEnabled(true).isActive(true).build();
         when(customUserDetailsService.loadActiveUser("admin")).thenReturn(user);
         when(passwordEncoder.matches("password123", "hashed")).thenReturn(true);
         when(customUserDetailsService.loadAuthorities(user)).thenReturn(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
@@ -160,9 +160,9 @@ class AuthServiceRefreshAndLogoutTest {
                 .totpCode("000000") // Guaranteed mismatch unless hash collision
                 .build();
 
-        String mfaKey = "MY_USER_MFA_SECRET_12345";
+        String mfaKey = "JBSWY3DPEHPK3PXP";
         long currentStep = System.currentTimeMillis() / 1000 / 30;
-        int validTotp = mfaService.generateTotp(mfaKey.getBytes(), currentStep);
+        int validTotp = mfaService.generateTotp(MfaService.decodeBase32(mfaKey), currentStep);
         if (validTotp == 0) {
             request.setTotpCode("111111");
         }

@@ -217,7 +217,7 @@ export default function AdminSettings() {
     setMfaError(null);
     try {
       const mfaRes = await getMfaStatus();
-      setMfaStatus(mfaRes?.data || { mfaEnabled: true, endpointAvailable: false });
+      setMfaStatus(mfaRes?.data || null);
     } catch (err) {
       const msg = extractErrorMessage(err, 'Failed to load MFA status.');
       setMfaError(msg);
@@ -459,7 +459,7 @@ export default function AdminSettings() {
               fontWeight: '700'
             }}
           >
-            SYSTEM SECURE · RBAC ENFORCED
+            SYSTEM SECURE Â· RBAC ENFORCED
           </span>
         </div>
       </div>
@@ -579,7 +579,7 @@ export default function AdminSettings() {
           >
             {loadingProfile
               ? 'Loading...'
-              : (displayedRoles.length > 0 ? displayedRoles.join(', ') : (profileError ? 'AUTH REQUIRED' : '—'))}
+              : (displayedRoles.length > 0 ? displayedRoles.join(', ') : (profileError ? 'AUTH REQUIRED' : 'â€”'))}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
             {displayedRoles.length} Granted Role Authorities
@@ -658,19 +658,19 @@ export default function AdminSettings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>System User ID</span>
                 <span className="font-mono" style={{ fontWeight: '700', color: 'var(--accent-cyan)' }}>
-                  {profile?.userId ? `#${profile.userId}` : (authUser?.id ? `#${authUser.id}` : '—')}
+                  {profile?.userId ? `#${profile.userId}` : (authUser?.id ? `#${authUser.id}` : 'â€”')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Username</span>
                 <span className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                  {displayedUsername || '—'}
+                  {displayedUsername || 'â€”'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Email Address</span>
                 <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
-                  {profile?.email || authUser?.email || '—'}
+                  {profile?.email || authUser?.email || 'â€”'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
@@ -688,7 +688,7 @@ export default function AdminSettings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Member Since</span>
                 <span style={{ color: 'var(--text-muted)' }}>
-                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '—'}
+                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'â€”'}
                 </span>
               </div>
             </div>
@@ -727,7 +727,7 @@ export default function AdminSettings() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Password Protection</span>
-                <span className="font-mono" style={{ color: 'var(--text-muted)' }}>••••••••••••</span>
+                <span className="font-mono" style={{ color: 'var(--text-muted)' }}>â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Hashing Algorithm</span>
@@ -1132,7 +1132,7 @@ export default function AdminSettings() {
                                     )}
                                   </div>
                                   <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    @{u.userName} · ID #{u.userId}
+                                    @{u.userName} Â· ID #{u.userId}
                                   </div>
                                 </div>
                               </div>
@@ -1142,7 +1142,7 @@ export default function AdminSettings() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11.5px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
                                   <Mail size={12} color="var(--text-muted)" />
-                                  <span>{u.email || '—'}</span>
+                                  <span>{u.email || 'â€”'}</span>
                                 </div>
                                 {u.phoneNumber && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px' }}>
@@ -1267,7 +1267,7 @@ export default function AdminSettings() {
                 fontFamily: 'var(--font-mono)'
               }}
             >
-              ✓ Immutable audit logs enabled · Real-time multi-tenant plant scoping enforced
+              âœ“ Immutable audit logs enabled Â· Real-time multi-tenant plant scoping enforced
             </div>
           </div>
         </div>
@@ -1452,19 +1452,19 @@ export default function AdminSettings() {
                 <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11px', color: 'var(--text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: newPassword.length >= 8 ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {newPassword.length >= 8 ? '✓' : '•'}
+                      {newPassword.length >= 8 ? 'âœ“' : 'â€¢'}
                     </span>
                     <span>At least 8 characters</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: (/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {(/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? '✓' : '•'}
+                      {(/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? 'âœ“' : 'â€¢'}
                     </span>
                     <span>Combination of letters & numbers or special characters</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: (newPassword && newPassword !== currentPassword) ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {(newPassword && newPassword !== currentPassword) ? '✓' : '•'}
+                      {(newPassword && newPassword !== currentPassword) ? 'âœ“' : 'â€¢'}
                     </span>
                     <span>Different from current password</span>
                   </div>
@@ -1498,7 +1498,7 @@ export default function AdminSettings() {
                 </div>
                 {confirmPassword && (
                   <div style={{ marginTop: '4px', fontSize: '11px', color: confirmPassword === newPassword ? 'var(--accent-emerald)' : 'var(--accent-coral)' }}>
-                    {confirmPassword === newPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                    {confirmPassword === newPassword ? 'âœ“ Passwords match' : 'âœ— Passwords do not match'}
                   </div>
                 )}
               </div>

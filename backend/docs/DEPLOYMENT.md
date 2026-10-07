@@ -1,4 +1,4 @@
-# SVP StockAI — Enterprise Deployment & Operations Guide
+# SVP StockAI â€” Enterprise Deployment & Operations Guide
 
 This guide provides step-by-step instructions for deploying the **SVP StockAI** platform across Local Development, Staging/Testing, and Production Kubernetes environments.
 
@@ -8,11 +8,11 @@ This guide provides step-by-step instructions for deploying the **SVP StockAI** 
 
 | Dependency | Minimum Version | Recommended / Production Version | Purpose |
 |---|---|---|---|
-| **Java / OpenJDK** | Java 23 | Eclipse Temurin 23.0.2+ | Core Application Runtime |
+| **Java / OpenJDK** | Java 21 | Eclipse Temurin 21.0.2+ | Core Application Runtime |
 | **Maven** | 3.9+ | Bundled Maven Wrapper (`./mvnw`) | Dependency & Build Management |
 | **Docker** | 24.0+ | Docker Engine 25.0+ / Containerd | Containerization |
 | **Docker Compose** | v2.20+ | v2.24+ | Local Multi-Service Orchestration |
-| **PostgreSQL** | 16.0+ | 16-alpine / 18.6 Enterprise | Primary ACID Relational Database |
+| **PostgreSQL** | 16.0+ | 16-alpine Enterprise | Primary ACID Relational Database |
 | **Redis** | 7.0+ | 7.2-alpine (Authenticated) | In-Memory Telemetry & Blacklist Cache |
 | **Apache Kafka** | 3.5+ | Confluent 7.5.0 / Kafka 3.6+ | Event Streaming & Telemetry Pipeline |
 | **MinIO / AWS S3** | S3 API v4 | RELEASE.2024-01-18+ / AWS S3 | Blob / Document Storage |
@@ -26,7 +26,7 @@ This guide provides step-by-step instructions for deploying the **SVP StockAI** 
 ```bash
 git clone https://github.com/saicharan5789/Stockai-31-08.git
 cd stockai
-java -version  # Verify JDK 23
+java -version  # Verify JDK 21
 ```
 
 ### Step 2: Configure Environment Variables

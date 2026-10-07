@@ -136,52 +136,56 @@ export const changeCurrentUserPassword = async (payload) => {
 };
 
 /**
- * Retrieves the TOTP MFA status.
- * Spring Boot enforces RFC 6238 TOTP server-side during /auth/login for administrator accounts,
- * but does not expose a standalone runtime query endpoint (/api/v1/auth/mfa/status).
+ * Retrieves the current authenticated user's TOTP MFA status.
+ * Endpoint: GET /api/v1/auth/mfa/status
  */
 export const getMfaStatus = async () => {
-  return {
-    data: {
-      mfaEnabled: true,
-      enforcedAtLogin: true,
-      endpointAvailable: false,
-      algorithm: 'RFC 6238 TOTP',
-      digits: 6,
-    }
-  };
+  return executeWithTokenRefresh(async () => {
+    const res = await api.get('/auth/mfa/status');
+    return { data: res.data };
+  });
 };
 
 /**
- * Initiates TOTP MFA enrollment.
- * Standalone enrollment endpoint is not exposed by backend controllers.
+ * Starts TOTP MFA enrollment.
+ * Endpoint: POST /api/v1/auth/mfa/enroll
  */
 export const enrollMfa = async () => {
-  const error = new Error('Runtime MFA enrollment (/api/v1/auth/mfa/enroll) is not supported by backend controllers.');
-  error.response = { status: 501, data: { message: 'Runtime MFA enrollment is not supported by backend controllers.' } };
-  throw error;
+  return executeWithTokenRefresh(async () => {
+    const res = await api.post('/auth/mfa/enroll');
+    return { data: res.data };
+  });
 };
 
 /**
  * Confirms and activates TOTP MFA.
+ * Endpoint: POST /api/v1/auth/mfa/confirm
  */
-export const confirmMfa = async (_totpCode) => {
-  const error = new Error('Runtime MFA confirmation (/api/v1/auth/mfa/confirm) is not supported by backend controllers.');
-  error.response = { status: 501, data: { message: 'Runtime MFA confirmation is not supported by backend controllers.' } };
-  throw error;
+export const confirmMfa = async (totpCode) => {
+  return executeWithTokenRefresh(async () => {
+    const res = await api.post('/auth/mfa/confirm', {
+      totpCode: String(totpCode ?? '').trim(),
+    });
+    return { data: res.data };
+  });
 };
 
 /**
  * Disables TOTP MFA.
+ * Endpoint: POST /api/v1/auth/mfa/disable
  */
-export const disableMfa = async (_password, _totpCode) => {
-  const error = new Error('Runtime MFA disable (/api/v1/auth/mfa/disable) is not supported by backend controllers.');
-  error.response = { status: 501, data: { message: 'Runtime MFA disable is not supported by backend controllers.' } };
-  throw error;
+export const disableMfa = async (password, totpCode) => {
+  return executeWithTokenRefresh(async () => {
+    const res = await api.post('/auth/mfa/disable', {
+      password,
+      totpCode: String(totpCode ?? '').trim(),
+    });
+    return { data: res.data };
+  });
 };
 
 /**
- * Revokes current session token server-side via TokenRevocationService.
+ * Revokes current session token server-side via TokenRevocationService. via TokenRevocationService.
  * Endpoint: POST /api/v1/auth/logout
  */
 export const logoutSession = async () => {

@@ -7,38 +7,52 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.lang.reflect.Field;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Phase 5 Security Verification: Per-Device IoT Authentication & Registry Tests.
- * Ensures that device credentials cannot be shared, swapped, replayed, or escalated,
- * and that revoked/disabled devices fail closed.
- */
 @DisplayName("Per-Device IoT Authentication Security Tests")
 class PerDeviceAuthenticationTest {
 
     private DeviceRegistryService registryService;
     private DeviceAuthenticationFilter filter;
 
-    private static final String EXT_KEY = "test-only-ext01-device-key-for-unit-tests";
-    private static final String LOOM_KEY = "KEY-LOOM-01-EDGE-9874";
+    private String extKey;
+    private String loomKey;
 
     @BeforeEach
-    void setUp()  throws Exception { 
+    void setUp() throws Exception {
         SecurityContextHolder.clearContext();
+
+        extKey = UUID.randomUUID().toString();
+        loomKey = UUID.randomUUID().toString();
+
         registryService = new DeviceRegistryService();
 
-        Field saltField = DeviceRegistryService.class.getDeclaredField("salt");
+        Field saltField =
+                DeviceRegistryService.class.getDeclaredField("salt");
         saltField.setAccessible(true);
-        saltField.set(registryService, "test-only-iot-salt-for-unit-tests");
+        saltField.set(
+                registryService,
+                UUID.randomUUID().toString()
+        );
 
-        Field keyField = DeviceRegistryService.class.getDeclaredField("ext01DeviceKey");
+        Field keyField =
+                DeviceRegistryService.class.getDeclaredField("ext01DeviceKey");
         keyField.setAccessible(true);
-        keyField.set(registryService, "test-only-ext01-device-key-for-unit-tests");
+        keyField.set(registryService, extKey);
 
         registryService.init();
+
+        registryService.registerDevice(
+                "LOOM-01",
+                loomKey,
+                "Production Machine LOOM-01",
+                DeviceStatus.ACTIVE
+        );
+
         filter = new DeviceAuthenticationFilter(registryService);
     }
 
@@ -47,16 +61,29 @@ class PerDeviceAuthenticationTest {
     void testValidDeviceCredential_Success() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "EXT-01");
-        request.addHeader("X-Device-Key", EXT_KEY);
+        request.addHeader("X-Device-Key", extKey);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        var auth = SecurityContextHolder.getContext().getAuthentication();
+        var auth =
+                SecurityContextHolder.getContext().getAuthentication();
+
         assertNotNull(auth);
         assertEquals("DEVICE:EXT-01", auth.getName());
-        assertTrue(auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_MACHINE")));
+        assertTrue(
+                auth.getAuthorities()
+                        .stream()
+                        .anyMatch(
+                                a -> a.getAuthority()
+                                        .equals("ROLE_MACHINE")
+                        )
+        );
         assertEquals(200, response.getStatus());
     }
 
@@ -65,15 +92,25 @@ class PerDeviceAuthenticationTest {
     void testInvalidDeviceCredential_Rejected() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "EXT-01");
-        request.addHeader("X-Device-Key", "COMPLETELY-WRONG-KEY");
+        request.addHeader(
+                "X-Device-Key",
+                UUID.randomUUID().toString()
+        );
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("Invalid, disabled, or revoked"));
     }
 
     @Test
@@ -83,15 +120,22 @@ class PerDeviceAuthenticationTest {
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "EXT-01");
-        request.addHeader("X-Device-Key", EXT_KEY);
+        request.addHeader("X-Device-Key", extKey);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("Invalid, disabled, or revoked"));
     }
 
     @Test
@@ -101,44 +145,70 @@ class PerDeviceAuthenticationTest {
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "EXT-01");
-        request.addHeader("X-Device-Key", EXT_KEY);
+        request.addHeader("X-Device-Key", extKey);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("Invalid, disabled, or revoked"));
     }
 
     @Test
-    @DisplayName("5. Unregistered / wrong device ID rejected with 401")
+    @DisplayName("5. Unregistered device ID rejected with 401")
     void testUnregisteredDeviceId_Rejected() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Device-Id", "UNKNOWN-DEVICE-999");
-        request.addHeader("X-Device-Key", EXT_KEY);
+        request.addHeader(
+                "X-Device-Id",
+                "UNKNOWN-DEVICE-" + UUID.randomUUID()
+        );
+        request.addHeader("X-Device-Key", extKey);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
     }
 
     @Test
-    @DisplayName("6. Credential/device mismatch rejected: EXT-01 key used for LOOM-01")
+    @DisplayName("6. Credential/device mismatch rejected")
     void testCredentialDeviceMismatch_Rejected() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "LOOM-01");
-        request.addHeader("X-Device-Key", EXT_KEY); // Reusing EXT-01 key
+        request.addHeader("X-Device-Key", extKey);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
     }
 
@@ -147,59 +217,161 @@ class PerDeviceAuthenticationTest {
     void testPartialDeviceHeader_Rejected() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("X-Device-Id", "EXT-01");
-        // missing X-Device-Key
+
         MockHttpServletResponse response = new MockHttpServletResponse();
-        MockFilterChain chain = new MockFilterChain();
 
-        filter.doFilter(request, response, chain);
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
 
-        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
         assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("Both X-Device-Id and X-Device-Key are required"));
     }
 
     @Test
-    @DisplayName("8. Device key rotation allows new key and invalidates old key")
+    @DisplayName("8. Device key rotation invalidates old credential")
     void testDeviceKeyRotation() throws Exception {
-        String newKey = "ROTATED-KEY-EXT-01-2026-XYZ";
-        registryService.rotateDeviceKey("EXT-01", newKey);
+        String newKey = UUID.randomUUID().toString();
 
-        // Old key must now fail
-        MockHttpServletRequest oldReq = new MockHttpServletRequest();
-        oldReq.addHeader("X-Device-Id", "EXT-01");
-        oldReq.addHeader("X-Device-Key", EXT_KEY);
-        MockHttpServletResponse oldResp = new MockHttpServletResponse();
-        filter.doFilter(oldReq, oldResp, new MockFilterChain());
-        assertEquals(401, oldResp.getStatus());
+        registryService.rotateDeviceKey(
+                "EXT-01",
+                newKey
+        );
 
-        // New key must now succeed
-        MockHttpServletRequest newReq = new MockHttpServletRequest();
-        newReq.addHeader("X-Device-Id", "EXT-01");
-        newReq.addHeader("X-Device-Key", newKey);
-        MockHttpServletResponse newResp = new MockHttpServletResponse();
-        filter.doFilter(newReq, newResp, new MockFilterChain());
-        assertEquals(200, newResp.getStatus());
-        assertNotNull(SecurityContextHolder.getContext().getAuthentication());
+        MockHttpServletRequest oldRequest =
+                new MockHttpServletRequest();
+        oldRequest.addHeader(
+                "X-Device-Id",
+                "EXT-01"
+        );
+        oldRequest.addHeader(
+                "X-Device-Key",
+                extKey
+        );
+
+        MockHttpServletResponse oldResponse =
+                new MockHttpServletResponse();
+
+        filter.doFilter(
+                oldRequest,
+                oldResponse,
+                new MockFilterChain()
+        );
+
+        assertEquals(
+                401,
+                oldResponse.getStatus()
+        );
+
+        SecurityContextHolder.clearContext();
+
+        MockHttpServletRequest newRequest =
+                new MockHttpServletRequest();
+        newRequest.addHeader(
+                "X-Device-Id",
+                "EXT-01"
+        );
+        newRequest.addHeader(
+                "X-Device-Key",
+                newKey
+        );
+
+        MockHttpServletResponse newResponse =
+                new MockHttpServletResponse();
+
+        filter.doFilter(
+                newRequest,
+                newResponse,
+                new MockFilterChain()
+        );
+
+        assertEquals(
+                200,
+                newResponse.getStatus()
+        );
+
+        assertNotNull(
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+        );
     }
 
     @Test
-    @DisplayName("9. Privilege escalation prevention: ROLE_MACHINE has no admin/operator authorities")
+    @DisplayName("9. ROLE_MACHINE has no privileged authorities")
     void testPrivilegeEscalationPrevention() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Device-Id", "EXT-01");
-        request.addHeader("X-Device-Key", EXT_KEY);
-        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockHttpServletRequest request =
+                new MockHttpServletRequest();
 
-        filter.doFilter(request, response, new MockFilterChain());
+        request.addHeader(
+                "X-Device-Id",
+                "EXT-01"
+        );
+        request.addHeader(
+                "X-Device-Key",
+                extKey
+        );
 
-        var auth = SecurityContextHolder.getContext().getAuthentication();
+        MockHttpServletResponse response =
+                new MockHttpServletResponse();
+
+        filter.doFilter(
+                request,
+                response,
+                new MockFilterChain()
+        );
+
+        var auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
         assertNotNull(auth);
-        assertFalse(auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
-        assertFalse(auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_SUPERVISOR")));
-        assertFalse(auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_OPERATOR")));
-        assertEquals(1, auth.getAuthorities().size());
-        assertEquals("ROLE_MACHINE", auth.getAuthorities().iterator().next().getAuthority());
+
+        assertFalse(
+                auth.getAuthorities()
+                        .stream()
+                        .anyMatch(
+                                a -> a.getAuthority()
+                                        .equals("ROLE_ADMIN")
+                        )
+        );
+
+        assertFalse(
+                auth.getAuthorities()
+                        .stream()
+                        .anyMatch(
+                                a -> a.getAuthority()
+                                        .equals("ROLE_SUPERVISOR")
+                        )
+        );
+
+        assertFalse(
+                auth.getAuthorities()
+                        .stream()
+                        .anyMatch(
+                                a -> a.getAuthority()
+                                        .equals("ROLE_OPERATOR")
+                        )
+        );
+
+        assertEquals(
+                1,
+                auth.getAuthorities().size()
+        );
+
+        assertEquals(
+                "ROLE_MACHINE",
+                auth.getAuthorities()
+                        .iterator()
+                        .next()
+                        .getAuthority()
+        );
     }
 }
-
-

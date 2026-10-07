@@ -11,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MfaServiceTest {
 
     private final MfaService mfaService = new MfaService();
-    private final String secret = "MY_SUPER_SECURE_MFA_SECRET_KEY_12345";
+    private final String secret = "JBSWY3DPEHPK3PXP";
 
     @Test
     @DisplayName("Verify valid TOTP generated for current timestamp")
     void testVerifyValidTotp() {
         long currentStep = Instant.now().getEpochSecond() / 30;
-        int validCode = mfaService.generateTotp(secret.getBytes(), currentStep);
+        int validCode = mfaService.generateTotp(MfaService.decodeBase32(secret), currentStep);
 
         boolean isValid = mfaService.verifyTotp(secret, validCode);
         assertThat(isValid).isTrue();
@@ -27,7 +27,7 @@ class MfaServiceTest {
     @DisplayName("Verify tolerance window for -30s drift")
     void testVerifyDriftTolerancePreviousStep() {
         long previousStep = (Instant.now().getEpochSecond() / 30) - 1;
-        int previousCode = mfaService.generateTotp(secret.getBytes(), previousStep);
+        int previousCode = mfaService.generateTotp(MfaService.decodeBase32(secret), previousStep);
 
         boolean isValid = mfaService.verifyTotp(secret, previousCode);
         assertThat(isValid).isTrue();
@@ -39,7 +39,7 @@ class MfaServiceTest {
         boolean isValid = mfaService.verifyTotp(secret, 999999);
         // Note: 999999 might randomly match in 1/1,000,000, but is not the calculated hash
         long currentStep = Instant.now().getEpochSecond() / 30;
-        int validCode = mfaService.generateTotp(secret.getBytes(), currentStep);
+        int validCode = mfaService.generateTotp(MfaService.decodeBase32(secret), currentStep);
         int invalidCode = (validCode + 12345) % 1_000_000;
 
         assertThat(mfaService.verifyTotp(secret, invalidCode)).isFalse();

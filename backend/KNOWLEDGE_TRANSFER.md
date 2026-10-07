@@ -8,26 +8,26 @@
 
 ## 1. Executive Summary & System Overview
 
-**StockAI** is an enterprise smart manufacturing, real-time IoT inventory management, and ERP platform purpose-built for polypropylene (PP) woven bag and polymer product manufacturing. It unifies factory-floor telemetry, supply-chain logistics, double-entry inventory accounting, quality management, inter-unit digital transfers, and automated procurement alerts into a reactive Spring Boot 4.x, PostgreSQL 18.6, Redis, and Apache Kafka architecture.
+**StockAI** is an enterprise smart manufacturing, real-time IoT inventory management, and ERP platform purpose-built for polypropylene (PP) woven bag and polymer product manufacturing. It unifies factory-floor telemetry, supply-chain logistics, double-entry inventory accounting, quality management, inter-unit digital transfers, and automated procurement alerts into a reactive Spring Boot 4.x, PostgreSQL 16, Redis, and Apache Kafka architecture.
 
 ### Three-Unit Factory Manufacturing Lifecycle:
 ```
-┌─────────────────┐       ┌─────────────────┐       ┌──────────────────┐       ┌─────────────────┐
-│ 1. Raw Material │       │ 2. Compounding  │       │ 3. 3-Stage Plant │       │ 4. Double-Entry │
-│    Intake & GRN │ ───►  │    & Batching   │ ───►  │    Manufacturing │ ───►  │    Ledger &     │
-│   (Strict FIFO) │       │ (PP+CaCO3+TiO2) │       │ (Extr/Weav/Conv) │       │   FG Inventory  │
-└────────┬────────┘       └─────────────────┘       └──────────────────┘       └────────┬────────┘
-         │                                                                              │
-         ▼                                          ┌──────────────────┐                ▼
-┌─────────────────┐                                 │ 6. Dispatch &    │       ┌─────────────────┐
-│ Reorder Alert & │                                 │    Invoicing     │ ◄───  │ 5. QC Pass &    │
-│ Procurement Rec │                                 │  (Gate & Vehicle)│       │    Inspection   │
-└─────────────────┘                                 └──────────────────┘       └─────────────────┘
-         │                                                    ▲
-         ▼                                                    │
-┌─────────────────────────────────────────────────────────────┴──────────────────────────────────┐
-│ Inter-Unit Digital Transfer Management (Unit 1 Compounding ──► Unit 2 Weaving ──► Unit 3 FG)  │
-└────────────────────────────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ 1. Raw Material â”‚       â”‚ 2. Compounding  â”‚       â”‚ 3. 3-Stage Plant â”‚       â”‚ 4. Double-Entry â”‚
+â”‚    Intake & GRN â”‚ â”€â”€â”€â–º  â”‚    & Batching   â”‚ â”€â”€â”€â–º  â”‚    Manufacturing â”‚ â”€â”€â”€â–º  â”‚    Ledger &     â”‚
+â”‚   (Strict FIFO) â”‚       â”‚ (PP+CaCO3+TiO2) â”‚       â”‚ (Extr/Weav/Conv) â”‚       â”‚   FG Inventory  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜       â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+         â”‚                                                                              â”‚
+         â–¼                                          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                                 â”‚ 6. Dispatch &    â”‚       â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Reorder Alert & â”‚                                 â”‚    Invoicing     â”‚ â—„â”€â”€â”€  â”‚ 5. QC Pass &    â”‚
+â”‚ Procurement Rec â”‚                                 â”‚  (Gate & Vehicle)â”‚       â”‚    Inspection   â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                                 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+         â”‚                                                    â–²
+         â–¼                                                    â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Inter-Unit Digital Transfer Management (Unit 1 Compounding â”€â”€â–º Unit 2 Weaving â”€â”€â–º Unit 3 FG)  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ---
@@ -36,14 +36,14 @@
 
 | Layer | Technology | Details |
 | :--- | :--- | :--- |
-| **Language** | Java 26 (JDK 23+ compatible) | Standard Java Records, Pattern Matching, Sealed Classes |
+| **Language** | Java 21 (JDK 21+ compatible) | Standard Java Records, Pattern Matching, Sealed Classes |
 | **Framework** | Spring Boot 4.1.1 | Spring Data JPA, WebMVC, Actuator, Security, Validation |
 | **Messaging & Streaming**| Apache Kafka (Confluent 7.5.0) | High-throughput telemetry, anomaly alerts, idempotency (`acks=all`) |
 | **Object Storage** | MinIO / AWS S3 SDK | Pallet labels (GS1), inspection reports, compliance exports |
 | **In-Memory Cache** | Redis 7.2 Alpine | Telemetry caching, machine status, token revocation blacklist |
 | **ORM / Persistence** | Hibernate 7.4.x / JPA 3.2 | Strict `ddl-auto=validate` schema validation |
 | **Connection Pool** | HikariCP (`StockAiHikariPool`) | Max Pool: 20, Min Idle: 10, Leak Detection: 15s |
-| **Database** | PostgreSQL 18.6 | Schema V2.4 (85 Tables, Invariant Triggers, Constraints) |
+| **Database** | PostgreSQL 16 | Schema V2.4 (85 Tables, Invariant Triggers, Constraints) |
 | **Security & IAM** | Spring Security 6 / Stateless JWT | BCrypt 12, HMAC-SHA256, Refresh Token rotation, Redis blacklist |
 | **Edge & Ingress** | NGINX Gateway Load Balancer | Reverse proxy, rate limiting, SSL/TLS termination |
 
@@ -209,11 +209,11 @@ Services spun up:
 ### Step 3: Build & Test Execution
 * **Execute Full Automated Test Suite (183 Tests)**:
   ```powershell
-  .\mvnw.cmd test "-Dmaven.compiler.release=23"
+  .\mvnw.cmd test "-Dmaven.compiler.release=21"
   ```
 * **Run Local Application**:
   ```powershell
-  .\mvnw.cmd spring-boot:run "-Dmaven.compiler.release=23"
+  .\mvnw.cmd spring-boot:run "-Dmaven.compiler.release=21"
   ```
 
 ---
@@ -229,7 +229,7 @@ Services spun up:
 4. **Soft Deletions**:
    * Do not issue SQL `DELETE` commands. Set `isActive = false` or update status (`Retired`, `Cancelled`, `Closed`, `Quarantine`).
 5. **Zero-Regression Verification**:
-   * Before pushing any commit to `origin/main`, execute `.\mvnw.cmd test "-Dmaven.compiler.release=23"` and ensure all 183 tests pass with 0 failures and 0 errors.
+   * Before pushing any commit to `origin/main`, execute `.\mvnw.cmd test "-Dmaven.compiler.release=21"` and ensure all 183 tests pass with 0 failures and 0 errors.
 
 ---
 

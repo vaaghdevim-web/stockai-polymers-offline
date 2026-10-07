@@ -40,25 +40,21 @@ public class CustomUserDetailsService implements UserDetailsService {
         return user;
     }
 
-    @Transactional(readOnly = true)
-    public List<GrantedAuthority> loadAuthorities(AppUser user) {
+@Transactional(readOnly = true)
+public List<GrantedAuthority> loadAuthorities(AppUser user) {
 
-        List<UserRole> userRoles =
-                userRoleRepository.findByUserAndIsActiveTrue(user);
+    List<UserRole> userRoles =
+            userRoleRepository.findActiveRolesWithActiveRole(user);
 
-        return userRoles.stream()
-                .filter(userRole ->
-                        Boolean.TRUE.equals(
-                                userRole.getRole().getIsActive()
-                        ))
-                .map(userRole ->
-                        new SimpleGrantedAuthority(
-                                "ROLE_" +
-                                userRole.getRole().getRoleName()
-                        ))
-                .map(authority -> (GrantedAuthority) authority)
-                .toList();
-    }
+    return userRoles.stream()
+            .map(userRole ->
+                    new SimpleGrantedAuthority(
+                            "ROLE_" +
+                            userRole.getRole().getRoleName()
+                    ))
+            .map(authority -> (GrantedAuthority) authority)
+            .toList();
+}
 
     @Override
     @Transactional(readOnly = true)

@@ -1,4 +1,4 @@
-# SVP StockAI — Enterprise Project Readiness & Handover Audit
+# SVP StockAI â€” Enterprise Project Readiness & Handover Audit
 
 This document provides a comprehensive audit checklist and evidence verification for the enterprise handover and submission of the **SVP StockAI** platform.
 
@@ -8,12 +8,12 @@ This document provides a comprehensive audit checklist and evidence verification
 
 | # | Audit Item | Status | Verification & Evidence in Repository |
 |---|---|---|---|
-| 1 | **Build successful** | **PASS** | Maven clean package builds executable JAR (`target/stockai-0.0.1-SNAPSHOT.jar`) cleanly with JDK 23 target. |
+| 1 | **Build successful** | **PASS** | Maven clean package builds executable JAR (`target/stockai-0.0.1-SNAPSHOT.jar`) cleanly with JDK 21 target. |
 | 2 | **Tests passing** | **PASS** | **198 tests run, 0 failures, 0 errors, 0 skipped** across Unit, Spring Data JPA, Stress, Concurrency, and Security tests. |
 | 3 | **Database configuration verified** | **PASS** | `spring.jpa.hibernate.ddl-auto=validate`, 85-table schema (`schema_v2.4.sql`), HikariCP connection pool with 5s timeout, keepalive, and leak detection. |
 | 4 | **Environment variables documented** | **PASS** | `.env.example` documents 100% of runtime properties across DB, Redis, Kafka, MinIO, JWT, and CORS with safe placeholders. |
 | 5 | **Secrets not committed** | **PASS** | `.gitignore` filters `.env`, `*.key`, `*.pem`, `credentials.json`; `ProductionSecurityValidator` prevents default secrets on `prod` profile startup. |
-| 6 | **Docker build verified** | **PASS** | Multi-stage production `Dockerfile` with Eclipse Temurin JDK 23 base, non-root user `stockai:10001`, and health checks. |
+| 6 | **Docker build verified** | **PASS** | Multi-stage production `Dockerfile` with Eclipse Temurin JDK 21 base, non-root user `stockai:10001`, and health checks. |
 | 7 | **Docker Compose verified** | **PASS** | `docker-compose.yml` configures `stockai-app`, `postgres`, `redis`, `kafka`, `zookeeper`, `minio`, `nginx-gateway` with health checks and network isolation. |
 | 8 | **Health checks verified** | **PASS** | Spring Boot Actuator `/actuator/health`, `/actuator/info` configured; Kubernetes startup, liveness, and readiness probes defined in `k8s/deployment.yaml`. |
 | 9 | **API documentation available** | **PASS** | Complete Postman collection in `postman/StockAI_X.postman_collection.json` covering 28+ enterprise endpoints. |
@@ -30,8 +30,8 @@ This document provides a comprehensive audit checklist and evidence verification
 
 ## 2. Technical Stack & Architecture Validation
 
-* **Language & Framework**: Java 23, Spring Boot 4.1.1
-* **Primary Relational Store**: PostgreSQL 16 / 18.6 with `HikariCP` connection pool
+* **Language & Framework**: Java 21, Spring Boot 4.1.1
+* **Primary Relational Store**: PostgreSQL 16 with `HikariCP` connection pool
 * **In-Memory Cache**: Redis 7.2 Alpine with authenticated password protection
 * **Event Streaming**: Apache Kafka 3.6.0 / Confluent 7.5.0 with idempotent producers (`acks=all`)
 * **Object Storage**: MinIO / S3 Document Store

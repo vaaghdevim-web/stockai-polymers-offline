@@ -15,8 +15,8 @@
 ---
 
 ## 2. Runtime & Language Version
-* **Language**: Java 26 (Standard release)
-* **Runtime Target**: **JDK 23+** (Eclipse Temurin / OpenJDK 23+ Alpine container compatible)
+* **Language**: Java 21 (Standard release)
+* **Runtime Target**: **JDK 21+** (Eclipse Temurin / OpenJDK 21+ Alpine container compatible)
 
 ---
 
@@ -25,7 +25,7 @@
 ### Local / Development Mode
 ```powershell
 # Windows PowerShell
-.\mvnw.cmd spring-boot:run "-Dmaven.compiler.release=23"
+.\mvnw.cmd spring-boot:run "-Dmaven.compiler.release=21"
 ```
 ```bash
 # Linux / macOS
@@ -59,7 +59,7 @@ java -jar -Dspring.profiles.active=prod target/stockai-0.0.1-SNAPSHOT.jar
 ---
 
 ## 6. Database Specifications
-* **Engine / Type**: PostgreSQL 14+ (Target Production Version: PostgreSQL 18.6)
+* **Engine / Type**: PostgreSQL 16
 * **Database Name**: `stockai` (or `Stockai`)
 * **Default Port**: `5432`
 * **Connection Pool**: HikariCP (`StockAiHikariPool`)
@@ -102,7 +102,7 @@ java -jar -Dspring.profiles.active=prod target/stockai-0.0.1-SNAPSHOT.jar
 # ==============================================================================
 # 1. Build Stage
 # ==============================================================================
-FROM eclipse-temurin:23-jdk-alpine AS build
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 # Copy Maven wrapper and POM
@@ -114,12 +114,12 @@ RUN ./mvnw dependency:go-offline -B
 
 # Copy source code and build production jar
 COPY src src
-RUN ./mvnw clean package -DskipTests "-Dmaven.compiler.release=23"
+RUN ./mvnw clean package -DskipTests "-Dmaven.compiler.release=21"
 
 # ==============================================================================
 # 2. Runtime Stage
 # ==============================================================================
-FROM eclipse-temurin:23-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Create non-root system user for security
@@ -142,7 +142,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 * **Direct in-code calls**: None currently (stateless REST design).
 * **Target Cloud Architecture**:
   * **AWS ALB (Application Load Balancer)**: SSL termination and HTTP traffic routing to container port 8080.
-  * **AWS RDS PostgreSQL**: Multi-AZ Managed PostgreSQL 14+.
+  * **AWS RDS PostgreSQL**: Multi-AZ Managed PostgreSQL 16+.
   * **AWS S3 / MinIO**: Object storage for reports, export files, and document archiving.
 
 ---
@@ -160,7 +160,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 ```powershell
 # Windows PowerShell
-.\mvnw.cmd test "-Dmaven.compiler.release=23"
+.\mvnw.cmd test "-Dmaven.compiler.release=21"
 ```
 
 ---
@@ -171,7 +171,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ./mvnw compile
 
 # Full Build & Verification
-./mvnw verify "-Dmaven.compiler.release=23"
+./mvnw verify "-Dmaven.compiler.release=21"
 ```
 
 ---
@@ -184,7 +184,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ---
 
 ## 15. Staging & Production Deployment Requirements
-1. **Host/Container**: JDK 23+ (or Java 26) Alpine JRE.
-2. **Database**: PostgreSQL 14+ instance initialized with `schema_v2.4.sql`, `indexes_migration.sql`, and `seed_factory_master_data.sql`.
+1. **Host/Container**: JDK 21+ (or Java 21) Alpine JRE.
+2. **Database**: PostgreSQL 16 instance initialized with `schema_v2.4.sql`, `indexes_migration.sql`, and `seed_factory_master_data.sql`.
 3. **Configuration**: Environment variables supplied via Docker / Kubernetes Secrets / HashiCorp Vault.
 4. **Networking**: Reverse proxy / Ingress terminating TLS (HTTPS on 443) and proxying to container port `8080`.

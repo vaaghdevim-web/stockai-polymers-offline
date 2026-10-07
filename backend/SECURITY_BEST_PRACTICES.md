@@ -11,7 +11,7 @@
 * **VPC Subnet Isolation**:
   * Public Subnets: ALB / WAF only.
   * Private Subnets: Application containers (`stockai` JVM). Security group allows inbound port 8080 **only** from the ALB security group.
-  * Isolated Data Subnets: PostgreSQL 18.6 and Redis 7.2 instances. Inbound connections allowed **only** from application security groups.
+  * Isolated Data Subnets: PostgreSQL 16 and Redis 7.2 instances. Inbound connections allowed **only** from application security groups.
 * **TLS 1.3 Strict Termination**:
   * Edge: Enforce HTTPS redirection (`HTTP 301 -> HTTPS`).
   * Database: Enforce SSL in PostgreSQL `pg_hba.conf` (`hostssl all all 0.0.0.0/0 scram-sha-256`).

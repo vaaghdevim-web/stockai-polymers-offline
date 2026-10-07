@@ -1,10 +1,10 @@
-# SVP StockAI — PP Woven Bag Factory Integrated Management System (IMS)
+# SVP StockAI â€” PP Woven Bag Factory Integrated Management System (IMS)
 
 [![CI/CD DevSecOps](https://github.com/saicharan5789/Stockai-31-08/actions/workflows/ci.yml/badge.svg)](https://github.com/saicharan5789/Stockai-31-08/actions/workflows/ci.yml)
 [![Disaster Recovery Drill](https://github.com/saicharan5789/Stockai-31-08/actions/workflows/dr-drill.yml/badge.svg)](https://github.com/saicharan5789/Stockai-31-08/actions/workflows/dr-drill.yml)
-[![Java 23](https://img.shields.io/badge/Java-23-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/23/)
+[![Java 21](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/23/)
 [![Spring Boot 4.1.1](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![PostgreSQL 16/18.6](https://img.shields.io/badge/PostgreSQL-16%20%7C%2018.6-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis 7.2](https://img.shields.io/badge/Redis-7.2-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-3.6%20%2F%207.5.0-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
 
@@ -12,7 +12,7 @@ AI-powered Smart Manufacturing, Real-Time IoT Ingestion, Double-Entry Inventory 
 
 ---
 
-## 📑 Table of Contents
+## ðŸ“‘ Table of Contents
 1. [Project Overview](#-project-overview)
 2. [Architecture Overview](#-architecture-overview)
 3. [Technology Stack & Exact Versions](#-technology-stack--exact-versions)
@@ -35,7 +35,7 @@ AI-powered Smart Manufacturing, Real-Time IoT Ingestion, Double-Entry Inventory 
 
 ---
 
-## 🏭 Project Overview
+## ðŸ­ Project Overview
 **StockAI** unifies factory-floor telemetry, supply-chain logistics, raw material compounding, circular loom weaving, bag conversion, quality assurance, and double-entry inventory ledger accounting into a reactive, high-performance manufacturing platform.
 
 ### Core Manufacturing Units Covered:
@@ -43,7 +43,7 @@ AI-powered Smart Manufacturing, Real-Time IoT Ingestion, Double-Entry Inventory 
 * **Unit 2: Circular Looms & Weaving**: High-speed shuttle weaving, loom RPM monitoring, warp/weft tension telemetry, roll production, and defect tracking.
 * **Unit 3: Conversion & Finishing**: Cutting, bottom stitching, valve bag forming, flexographic printing, palletization with barcode generation, and dispatch.
 
-### 📊 Verified Enterprise Codebase Inventory
+### ðŸ“Š Verified Enterprise Codebase Inventory
 | Component Dimension | Verified Count | Description & Scope |
 |---|---|---|
 | **Production Java Files** | **195** source files | Clean layered architecture (Controllers, Services, Repositories, DTOs, Security) |
@@ -58,7 +58,7 @@ AI-powered Smart Manufacturing, Real-Time IoT Ingestion, Double-Entry Inventory 
 
 ---
 
-## 🏛️ Architecture Overview
+## ðŸ›ï¸ Architecture Overview
 
 ```mermaid
 graph TD
@@ -81,7 +81,7 @@ graph TD
 
     subgraph Data & Storage Persistence Layer
         Svc --> Hikari[HikariCP Pool - Leak Detection]
-        Hikari --> PG[(PostgreSQL 16/18.6 - Schema V2.4)]
+        Hikari --> PG[(PostgreSQL 16 - Schema V2.4)]
         Producer --> KafkaCluster[(Apache Kafka Cluster - 6 Topics)]
         KafkaCluster --> Consumer[StockAiKafkaConsumer]
         Consumer --> PG
@@ -91,13 +91,13 @@ graph TD
 
 ---
 
-## 🛠️ Technology Stack & Exact Versions
+## ðŸ› ï¸ Technology Stack & Exact Versions
 
 | Component | Technology | Version | Purpose / Scope |
 |---|---|---|---|
-| **Language Runtime** | OpenJDK / Eclipse Temurin | **Java 23** (`<java.version>23</java.version>`) | Primary JVM execution environment |
+| **Language Runtime** | OpenJDK / Eclipse Temurin | **Java 21** (`<java.version>23</java.version>`) | Primary JVM execution environment |
 | **Framework** | Spring Boot | **4.1.1** | WebMVC, Data JPA, Security, Actuator, Validation |
-| **Relational Database** | PostgreSQL | **16-alpine** / **18.6** | 85-table ACID schema, double-entry triggers |
+| **Relational Database** | PostgreSQL | **16-alpine** | 85-table ACID schema, double-entry triggers |
 | **Connection Pooling** | HikariCP | **5.1.0** (Spring Boot bundled) | Leak detection, 5s timeout, keepalive |
 | **In-Memory Cache** | Redis | **7.2-alpine** | 5s machine telemetry cache, token blacklist |
 | **Message Broker** | Apache Kafka | **3.6.0** / Confluent **7.5.0** | Event streaming, anomalies, FIFO partition keys |
@@ -109,16 +109,16 @@ graph TD
 
 ---
 
-## 📋 Prerequisites
+## ðŸ“‹ Prerequisites
 Before setting up the project, ensure you have installed:
-* **JDK 23** (Eclipse Temurin 23.0.2+ recommended)
+* **JDK 21** (Eclipse Temurin 21.0.2+ recommended)
 * **Maven 3.9+** (or use the included `./mvnw`)
 * **Docker 24+** and **Docker Compose v2.20+**
 * **Git 2.40+**
 
 ---
 
-## 💻 Local Development Setup
+## ðŸ’» Local Development Setup
 
 ### Option A: Complete Docker Compose Environment (Recommended)
 Start all supporting services (PostgreSQL, Redis, Kafka, Zookeeper, MinIO, Nginx):
@@ -151,7 +151,7 @@ The server will start on `http://localhost:8080`.
 
 ---
 
-## ⚙️ Environment Variables Configuration
+## âš™ï¸ Environment Variables Configuration
 
 All configuration is externalized. Copy `.env.example` to `.env`:
 
@@ -179,7 +179,7 @@ All configuration is externalized. Copy `.env.example` to `.env`:
 
 ---
 
-## 🗄️ Database Setup & Schema Validation
+## ðŸ—„ï¸ Database Setup & Schema Validation
 
 The application strictly enforces **`spring.jpa.hibernate.ddl-auto=validate`**. Hibernate verifies entity mappings against the existing database schema without altering tables.
 
@@ -194,7 +194,7 @@ The application strictly enforces **`spring.jpa.hibernate.ddl-auto=validate`**. 
 
 ---
 
-## 🔨 Build & Execution Guide
+## ðŸ”¨ Build & Execution Guide
 
 ```bash
 # Clean build and compile
@@ -209,7 +209,7 @@ java -jar target/stockai-0.0.1-SNAPSHOT.jar
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## ðŸ§ª Testing & Quality Assurance
 
 ### 1. Run Complete Automated Test Suite & Coverage
 ```bash
@@ -238,7 +238,7 @@ node postman/generate-report.js
 
 ---
 
-## 📖 API Documentation & Access
+## ðŸ“– API Documentation & Access
 
 ### Postman Test Suite & Documentation:
 * Collection File: [`postman/StockAI_X.postman_collection.json`](file:///postman/StockAI_X.postman_collection.json)
@@ -260,7 +260,7 @@ node postman/generate-report.js
 
 ---
 
-## 🔐 Authentication, Authorization & IAM
+## ðŸ” Authentication, Authorization & IAM
 
 * **Stateless JWT**: Tokens signed using HMAC-SHA256 (`jjwt 0.12.6`) containing `userId`, `username`, `plantId`, and `roles`.
 * **Zero-Trust Machine Authentication**: Edge PLCs authenticate via `X-Device-Key` header verified by [`DeviceAuthenticationFilter.java`](file:///src/main/java/com/svp/stockai/security/DeviceAuthenticationFilter.java). Machine anti-spoofing logic blocks cross-machine packet tampering.
@@ -275,7 +275,7 @@ node postman/generate-report.js
 
 ---
 
-## 🐳 Docker & Container Setup
+## ðŸ³ Docker & Container Setup
 
 Build the hardened production container:
 ```bash
@@ -292,7 +292,7 @@ docker run -d -p 8080:8080 \
 
 ---
 
-## ☸️ Production Deployment Overview (Kubernetes)
+## â˜¸ï¸ Production Deployment Overview (Kubernetes)
 
 Deploy to production Kubernetes clusters (EKS/GKE):
 ```bash
@@ -318,7 +318,7 @@ For complete step-by-step production operations, refer to [`docs/DEPLOYMENT.md`]
 
 ---
 
-## 📊 Health Checks, Metrics & Observability
+## ðŸ“Š Health Checks, Metrics & Observability
 
 * **Liveness & Readiness Probes**: Integrated with Spring Boot Actuator at `/actuator/health`.
 * **Prometheus Metrics**: Exposing JVM, CPU, Memory, and HikariCP connection pool metrics.
@@ -326,7 +326,7 @@ For complete step-by-step production operations, refer to [`docs/DEPLOYMENT.md`]
 
 ---
 
-## 🚨 Troubleshooting & Common Errors
+## ðŸš¨ Troubleshooting & Common Errors
 
 ### 1. `Schema-validation: missing table` or `column mismatch`
 * **Cause**: PostgreSQL schema was not executed before starting Spring Boot with `ddl-auto=validate`.
@@ -341,7 +341,7 @@ For complete step-by-step production operations, refer to [`docs/DEPLOYMENT.md`]
 
 ---
 
-## 🛡️ Security & DevSecOps Safeguards
+## ðŸ›¡ï¸ Security & DevSecOps Safeguards
 
 * **Zero Plaintext Secrets**: Secrets injected via environment variables; protected by `ProductionSecurityValidator`.
 * **Non-Root Container**: Dockerfile enforces execution as UID `10001` (`stockai`).
@@ -351,7 +351,7 @@ For complete step-by-step production operations, refer to [`docs/DEPLOYMENT.md`]
 
 ---
 
-## 🚀 CI/CD Pipeline
+## ðŸš€ CI/CD Pipeline
 
 The project utilizes automated GitHub Actions workflows:
 * **DevSecOps Pipeline ([`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml))**:
@@ -366,43 +366,43 @@ The project utilizes automated GitHub Actions workflows:
 
 ---
 
-## 📁 Project Directory Structure
+## ðŸ“ Project Directory Structure
 
 ```
 stockai/
-├── .github/workflows/       # CI/CD DevSecOps & DR Drill pipelines
-├── docs/                    # Deployment & Project Readiness documentation
-│   ├── DEPLOYMENT.md
-│   └── PROJECT_READINESS.md
-├── k8s/                     # Production Kubernetes manifests
-│   ├── deployment.yaml, service.yaml, ingress.yaml, networkpolicy.yaml, ...
-├── postman/                 # API test collections & report generators
-├── scripts/                 # DR scripts & load testing suites
-│   ├── dr/postgres-wal-dr-manager.sh
-│   └── load-testing/
-├── src/main/java/com/svp/stockai/
-│   ├── auth/                # Authentication controllers & services
-│   ├── config/              # Security, Database, Kafka, Redis configs
-│   ├── controller/          # REST API endpoints (Pallets, IoT, QC, etc.)
-│   ├── dto/                 # Request & Response Data Transfer Objects
-│   ├── entity/              # 67 JPA domain entities matching Schema V2.4
-│   ├── messaging/           # Apache Kafka producers & consumers
-│   ├── repository/          # Spring Data JPA repositories & FIFO queries
-│   ├── security/            # JWT, MFA, DeviceAuth, CorrelationId filters
-│   └── service/             # Transactional domain & manufacturing services
-├── src/main/resources/
-│   ├── application.properties # Production application configuration
-│   └── db/schema_v2.4.sql   # Source-of-truth PostgreSQL DDL schema
-├── Dockerfile               # Multi-stage hardened production container
-├── docker-compose.yml       # Local multi-service orchestration
-├── nginx.conf               # Edge reverse proxy & security headers
-├── DISASTER_RECOVERY_RUNBOOK.md # Regional failover & DR runbook
-└── pom.xml                  # Maven build & dependency definitions
+â”œâ”€â”€ .github/workflows/       # CI/CD DevSecOps & DR Drill pipelines
+â”œâ”€â”€ docs/                    # Deployment & Project Readiness documentation
+â”‚   â”œâ”€â”€ DEPLOYMENT.md
+â”‚   â””â”€â”€ PROJECT_READINESS.md
+â”œâ”€â”€ k8s/                     # Production Kubernetes manifests
+â”‚   â”œâ”€â”€ deployment.yaml, service.yaml, ingress.yaml, networkpolicy.yaml, ...
+â”œâ”€â”€ postman/                 # API test collections & report generators
+â”œâ”€â”€ scripts/                 # DR scripts & load testing suites
+â”‚   â”œâ”€â”€ dr/postgres-wal-dr-manager.sh
+â”‚   â””â”€â”€ load-testing/
+â”œâ”€â”€ src/main/java/com/svp/stockai/
+â”‚   â”œâ”€â”€ auth/                # Authentication controllers & services
+â”‚   â”œâ”€â”€ config/              # Security, Database, Kafka, Redis configs
+â”‚   â”œâ”€â”€ controller/          # REST API endpoints (Pallets, IoT, QC, etc.)
+â”‚   â”œâ”€â”€ dto/                 # Request & Response Data Transfer Objects
+â”‚   â”œâ”€â”€ entity/              # 67 JPA domain entities matching Schema V2.4
+â”‚   â”œâ”€â”€ messaging/           # Apache Kafka producers & consumers
+â”‚   â”œâ”€â”€ repository/          # Spring Data JPA repositories & FIFO queries
+â”‚   â”œâ”€â”€ security/            # JWT, MFA, DeviceAuth, CorrelationId filters
+â”‚   â””â”€â”€ service/             # Transactional domain & manufacturing services
+â”œâ”€â”€ src/main/resources/
+â”‚   â”œâ”€â”€ application.properties # Production application configuration
+â”‚   â””â”€â”€ db/schema_v2.4.sql   # Source-of-truth PostgreSQL DDL schema
+â”œâ”€â”€ Dockerfile               # Multi-stage hardened production container
+â”œâ”€â”€ docker-compose.yml       # Local multi-service orchestration
+â”œâ”€â”€ nginx.conf               # Edge reverse proxy & security headers
+â”œâ”€â”€ DISASTER_RECOVERY_RUNBOOK.md # Regional failover & DR runbook
+â””â”€â”€ pom.xml                  # Maven build & dependency definitions
 ```
 
 ---
 
-## 🤝 Contribution Guidelines
+## ðŸ¤ Contribution Guidelines
 1. Branch from `main` using descriptive branch names (`feat/`, `fix/`, `sec/`).
 2. Ensure all unit and integration tests pass: `./mvnw clean test`.
 3. Code formatting must adhere to standard Java conventions without trailing whitespace.

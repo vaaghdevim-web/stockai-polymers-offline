@@ -1,7 +1,7 @@
 -- ================================================================
 -- SVP StockAI - PostgreSQL Database Schema V2.4
 -- Factory + ERP + Inventory + IoT integrated architecture
--- PostgreSQL 14+
+-- PostgreSQL 16+
 -- ================================================================
 
 BEGIN;

@@ -3,7 +3,6 @@ import { X, ShieldCheck, KeyRound, QrCode, Copy, Check } from 'lucide-react';
 
 export default function MfaSetupModal({ isOpen, onClose, user }) {
   const [copied, setCopied] = useState(false);
-  const secretKey = 'SVPSTOCKAIADMIN2FASECRETKEY2026';
 
   if (!isOpen) return null;
 
@@ -20,7 +19,7 @@ export default function MfaSetupModal({ isOpen, onClose, user }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShieldCheck size={20} color="var(--accent-emerald)" />
             <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Google Authenticator 2FA Security
+              Authenticator Security Setup
             </h3>
           </div>
           <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ padding: '4px' }}>
