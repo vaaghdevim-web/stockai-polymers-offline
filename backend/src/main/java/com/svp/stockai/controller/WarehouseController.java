@@ -77,6 +77,7 @@ public class WarehouseController {
 
     @PostMapping
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public ResponseEntity<WarehouseResponse> createWarehouse(@Valid @RequestBody CreateWarehouseRequest request) {
         Plant plant = plantRepository.findById(request.getPlantId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Plant not found with ID: " + request.getPlantId()));
@@ -94,6 +95,7 @@ public class WarehouseController {
 
     @PutMapping("/{id:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public WarehouseResponse updateWarehouse(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         Warehouse w = warehouseRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found with ID: " + id));
@@ -120,6 +122,7 @@ public class WarehouseController {
 
     @DeleteMapping("/{id:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> deleteWarehouse(
             @PathVariable Long id,
             @RequestParam(defaultValue = "true") boolean permanent) {
@@ -158,6 +161,7 @@ public class WarehouseController {
 
     @PostMapping("/{id:[0-9]+}/clear-all-stock")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> clearAllWarehouseStock(@PathVariable Long id) {
         if (!warehouseRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found with ID: " + id);
@@ -288,6 +292,7 @@ public class WarehouseController {
 
     @PostMapping("/racks/{rackId:[0-9]+}/shelves")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER', 'SUPERVISOR')")
     public ResponseEntity<Map<String, Object>> createShelfForRack(@PathVariable Long rackId, @RequestBody Map<String, Object> body) {
         LocationRack rack = locationRackRepository.findById(rackId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
@@ -309,6 +314,7 @@ public class WarehouseController {
 
     @PostMapping("/shelves/{shelfId:[0-9]+}/bins")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER', 'SUPERVISOR')")
     public ResponseEntity<LocationBinResponse> createBinForShelf(@PathVariable Long shelfId, @RequestBody Map<String, Object> body) {
         LocationShelf shelf = locationShelfRepository.findById(shelfId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
@@ -337,6 +343,7 @@ public class WarehouseController {
 
     @PutMapping("/racks/{rackId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER', 'SUPERVISOR')")
     public ResponseEntity<Map<String, Object>> updateRack(@PathVariable Long rackId, @RequestBody Map<String, Object> body) {
         LocationRack rack = locationRackRepository.findById(rackId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
@@ -352,6 +359,7 @@ public class WarehouseController {
 
     @DeleteMapping("/racks/{rackId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public ResponseEntity<Void> deleteRack(@PathVariable Long rackId) {
         LocationRack rack = locationRackRepository.findById(rackId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rack not found with ID: " + rackId));
@@ -367,6 +375,7 @@ public class WarehouseController {
 
     @PutMapping("/shelves/{shelfId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER', 'SUPERVISOR')")
     public ResponseEntity<Map<String, Object>> updateShelf(@PathVariable Long shelfId, @RequestBody Map<String, Object> body) {
         LocationShelf shelf = locationShelfRepository.findById(shelfId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
@@ -379,6 +388,7 @@ public class WarehouseController {
 
     @DeleteMapping("/shelves/{shelfId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public ResponseEntity<Void> deleteShelf(@PathVariable Long shelfId) {
         LocationShelf shelf = locationShelfRepository.findById(shelfId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Shelf not found with ID: " + shelfId));
@@ -390,6 +400,7 @@ public class WarehouseController {
 
     @PutMapping("/bins/{binId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER', 'SUPERVISOR')")
     public ResponseEntity<LocationBinResponse> updateBin(@PathVariable Long binId, @RequestBody Map<String, Object> body) {
         LocationBin bin = locationBinRepository.findByIdWithLock(binId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));
@@ -436,6 +447,7 @@ public class WarehouseController {
 
     @DeleteMapping("/bins/{binId:[0-9]+}")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public ResponseEntity<Void> deleteBin(@PathVariable Long binId, @RequestParam(defaultValue = "false") boolean force) {
         LocationBin bin = locationBinRepository.findById(binId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));
@@ -454,6 +466,7 @@ public class WarehouseController {
 
     @PostMapping("/bins/{binId:[0-9]+}/clear-stock")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER', 'PLANT_MANAGER')")
     public ResponseEntity<Map<String, Object>> clearBinStock(@PathVariable Long binId) {
         LocationBin bin = locationBinRepository.findById(binId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bin not found with ID: " + binId));

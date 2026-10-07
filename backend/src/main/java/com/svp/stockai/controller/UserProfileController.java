@@ -5,6 +5,7 @@ import com.svp.stockai.repository.AppUserRepository;
 import com.svp.stockai.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class UserProfileController {
 
     private final AppUserRepository appUserRepository;
@@ -26,6 +28,7 @@ public class UserProfileController {
 
     @GetMapping
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'FACTORY_DIRECTOR')")
     public ResponseEntity<?> getAllUsers() {
         List<Map<String, Object>> users = appUserRepository.findAll().stream()
                 .map(this::toProfile)
@@ -35,6 +38,7 @@ public class UserProfileController {
 
     @PatchMapping("/{id}/toggle-status")
     @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {
         AppUser user = appUserRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
