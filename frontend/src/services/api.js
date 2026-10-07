@@ -210,6 +210,8 @@ export const warehouseApi = {
   getBinsByWarehouseId: (warehouseId) => api.get(`/warehouses/${warehouseId}/bins`),
   getWarehouseBins: (warehouseId) => api.get(`/warehouses/${warehouseId}/bins`),
   getBinByCode: (binCode) => api.get(`/warehouses/bins/${binCode}`),
+  getBinOccupancy: (binId) => api.get(`/warehouses/bins/${binId}/occupancy`),
+  searchBatchLocation: (batchNo) => api.get('/warehouses/batch-location', { params: { batchNo } }),
 };
 
 // 3b. Enterprise Roles & RBAC Management

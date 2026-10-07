@@ -23,6 +23,7 @@ import {
   getWarehouses,
   getWarehouseStorageHierarchy,
   getBinOccupancy,
+  searchBatchLocation,
   clearBinStock,
   clearAllWarehouseStock,
   flattenHierarchyBins,
@@ -59,6 +60,12 @@ export default function WarehouseManagement() {
   const [showInactive, setShowInactive] = useState(false);
   const [search, setSearch] = useState('');
   const [binSearch, setBinSearch] = useState('');
+
+  // Batch Physical Location Search State
+  const [batchSearchInput, setBatchSearchInput] = useState('');
+  const [searchingBatch, setSearchingBatch] = useState(false);
+  const [batchSearchResult, setBatchSearchResult] = useState(null);
+  const [batchSearchError, setBatchSearchError] = useState(null);
 
   // Creation & Edit/Delete Modals State
   const [isCreateWarehouseOpen, setIsCreateWarehouseOpen] = useState(false);
@@ -149,6 +156,23 @@ export default function WarehouseManagement() {
     }
   }, [selectedWarehouseId, fetchStorageHierarchy]);
 
+  // Batch Physical Location Search Handler
+  const handleBatchLocationSearch = async (e) => {
+    if (e) e.preventDefault();
+    if (!batchSearchInput.trim()) return;
+    try {
+      setSearchingBatch(true);
+      setBatchSearchError(null);
+      setBatchSearchResult(null);
+      const res = await searchBatchLocation(batchSearchInput.trim());
+      setBatchSearchResult(res.data);
+    } catch (err) {
+      setBatchSearchError(extractErrorMessage(err, 'Batch not found. Please verify the batch number.'));
+    } finally {
+      setSearchingBatch(false);
+    }
+  };
+
   // Open real-time bin occupancy modal
   const handleInspectBin = async (bin) => {
     setInspectedBin({
@@ -163,12 +187,20 @@ export default function WarehouseManagement() {
     try {
       const res = await getBinOccupancy(bin.binId);
       if (res.data) {
-        const binData = res.data.bin || {};
+        const payload = res.data;
         setInspectedBin((prev) => ({
           ...prev,
-          ...binData,
-          batches: res.data.batches || [],
-          pallets: res.data.pallets || [],
+          ...(payload.bin || {}),
+          binId: payload.binId || prev.binId,
+          binCode: payload.binCode || prev.binCode,
+          capacityKg: payload.capacityKg !== undefined ? payload.capacityKg : prev.capacityKg,
+          currentStockKg: payload.currentStockKg !== undefined ? payload.currentStockKg : prev.currentStockKg,
+          availableCapacityKg: payload.availableCapacityKg !== undefined ? payload.availableCapacityKg : prev.availableCapacityKg,
+          utilizationPct: payload.utilizationPct !== undefined ? payload.utilizationPct : prev.utilizationPct,
+          status: payload.status || prev.status,
+          isOverCapacity: payload.isOverCapacity !== undefined ? payload.isOverCapacity : prev.isOverCapacity,
+          batches: payload.batches || [],
+          pallets: payload.pallets || [],
         }));
       }
     } catch (err) {
@@ -356,6 +388,174 @@ export default function WarehouseManagement() {
             />
           </div>
         </div>
+      </div>
+
+      {/* Physical Batch Location Search Panel */}
+      <div style={{
+        background: 'var(--bg-panel)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-md)',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <Search size={15} color="var(--accent-cyan)" /> Physical Storage Location Search by Batch Number
+            </div>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Enter any Raw Material (e.g. <span className="font-mono">RM-2026-001</span>) or Finished Goods batch number to resolve its exact physical location hierarchy and live capacity.
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleBatchLocationSearch} style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+            <input
+              type="text"
+              className="input font-mono"
+              placeholder="Enter Batch Number (e.g. RM-2026-001, FB-2026-BAG-01)..."
+              value={batchSearchInput}
+              onChange={(e) => {
+                setBatchSearchInput(e.target.value);
+                setBatchSearchError(null);
+              }}
+              style={{ paddingLeft: '32px', fontSize: '12.5px' }}
+            />
+            <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+          </div>
+
+          <button
+            type="submit"
+            disabled={searchingBatch || !batchSearchInput.trim()}
+            className="btn btn-primary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontWeight: '700' }}
+          >
+            {searchingBatch ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
+            Search Location
+          </button>
+
+          {(batchSearchResult || batchSearchError) && (
+            <button
+              type="button"
+              onClick={() => {
+                setBatchSearchResult(null);
+                setBatchSearchError(null);
+                setBatchSearchInput('');
+              }}
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: '11.5px' }}
+            >
+              Clear
+            </button>
+          )}
+        </form>
+
+        {batchSearchError && (
+          <div style={{
+            padding: '10px 12px',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: 'var(--radius-sm)',
+            color: 'var(--accent-coral)',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <AlertCircle size={16} />
+            <span>{batchSearchError}</span>
+          </div>
+        )}
+
+        {batchSearchResult && (
+          <div style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--accent-cyan)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            boxShadow: '0 4px 12px rgba(0, 210, 255, 0.08)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge badge-cyan" style={{ fontSize: '10.5px', fontWeight: '800' }}>
+                  {batchSearchResult.batchType}
+                </span>
+                <span className="font-mono" style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
+                  {batchSearchResult.batchNo}
+                </span>
+                {batchSearchResult.lotNumber && (
+                  <span className="font-mono" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                    (Lot: {batchSearchResult.lotNumber})
+                  </span>
+                )}
+              </div>
+              <span className={`badge ${batchSearchResult.binStatus === 'OVER CAPACITY' ? 'badge-coral' : batchSearchResult.binStatus === 'FULL' ? 'badge-amber' : 'badge-emerald'}`} style={{ fontSize: '11px', fontWeight: '700' }}>
+                {batchSearchResult.binStatus}
+              </span>
+            </div>
+
+            {/* Exact Location Breadcrumb Trail */}
+            <div style={{
+              background: 'rgba(0, 210, 255, 0.06)',
+              border: '1px solid rgba(0, 210, 255, 0.2)',
+              borderRadius: 'var(--radius-xs)',
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Exact Location Hierarchy</span>
+                <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {batchSearchResult.exactLocation}
+                </span>
+              </div>
+            </div>
+
+            {/* Metrics Breakdown Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '12px' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10.5px' }}>Material / Product</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{batchSearchResult.materialName}</strong>
+                <span className="font-mono" style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)' }}>{batchSearchResult.materialCode}</span>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10.5px' }}>Current Stored Qty</span>
+                <strong className="font-mono" style={{ fontSize: '14px', color: 'var(--accent-cyan)' }}>
+                  {Number(batchSearchResult.quantityKg || 0).toLocaleString()} kg
+                </strong>
+                <span style={{ display: 'block', fontSize: '10.5px', color: 'var(--text-muted)' }}>Quality: {batchSearchResult.qualityStatus}</span>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10.5px' }}>Storage Bin Capacity</span>
+                <strong className="font-mono" style={{ color: 'var(--text-primary)' }}>
+                  {Number(batchSearchResult.binCapacityKg || 0).toLocaleString()} kg
+                </strong>
+                <span style={{ display: 'block', fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                  Occupied: {Number(batchSearchResult.binOccupiedKg || 0).toLocaleString()} kg ({Number(batchSearchResult.binOccupancyPct || 0).toFixed(1)}%)
+                </span>
+              </div>
+
+              <div>
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '10.5px' }}>Available Bin Space</span>
+                <strong className="font-mono" style={{ color: batchSearchResult.binAvailableKg > 0 ? 'var(--accent-emerald)' : 'var(--accent-coral)' }}>
+                  {Number(batchSearchResult.binAvailableKg || 0).toLocaleString()} kg
+                </strong>
+                <span style={{ display: 'block', fontSize: '10.5px', color: 'var(--text-muted)' }}>Zone: {batchSearchResult.zone}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Left Warehouse List, Right Storage Hierarchy */}

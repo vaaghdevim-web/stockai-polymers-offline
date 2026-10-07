@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,4 +20,11 @@ public class LocationBinResponse {
     private String rackCode;
     private String binCode;
     private Boolean isActive;
+
+    private BigDecimal capacityKg;
+    private BigDecimal currentStockKg;
+    private BigDecimal availableCapacityKg;
+    private Double utilizationPct;
+    private String status;
+    private Integer activePalletCount;
 }
