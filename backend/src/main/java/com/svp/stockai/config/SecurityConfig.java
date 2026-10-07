@@ -77,10 +77,20 @@ public class SecurityConfig {
                         .permitAll()
 
                         // Landing page and static assets
-                        .requestMatchers("/", "/index.html", "/favicon.ico", "/static/**")
+                        .requestMatchers(
+        "/",
+        "/index.html",
+        "/favicon.ico",
+        "/static/**",
+        "/assets/**",
+        "/vite.svg",
+        "/stockai-full-logo.jpg",
+        "/logo.jpg",
+        "/company-logo.jpg"
+)
                         .permitAll()
 
-                        // SSE Telemetry Streaming endpoint: uses single-use stream tickets for browser EventSource
+                        // SSE Telemetry Streaming endpoint
                         // The controller itself validates the ticket or JWT token and enforces RBAC
                         .requestMatchers("/api/v1/iot/telemetry/stream", "/api/v1/iot/telemetry/stream/**")
                         .permitAll()

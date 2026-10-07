@@ -1,4 +1,4 @@
-﻿services:
+services:
 
   nginx:
     image: nginx:1.25-alpine
@@ -15,7 +15,7 @@
       - frontend-network
 
   stockai-app:
-    image: stockai-offline-app:1.0.3
+    image: stockai-offline-app:1.0.5
     container_name: stockai-offline-app
     restart: unless-stopped
     environment:
