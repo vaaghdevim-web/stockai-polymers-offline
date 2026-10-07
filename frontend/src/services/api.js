@@ -141,7 +141,7 @@ export const authApi = {
     return api.post('/auth/refresh', payload);
   },
   logout: () => api.post('/auth/logout'),
-  changePassword: (data) => api.put('/auth/change-password', data),
+  changePassword: (data) => api.put('/users/me/password', data),
 };
 
 // 2. IoT Telemetry & Stream Tickets
@@ -157,6 +157,7 @@ export const inventoryApi = {
   getRawMaterials: () => api.get('/inventory/raw-materials'),
   getRawMaterialById: (id) => api.get(`/inventory/raw-materials/${id}`),
   createRawMaterial: (data) => api.post('/inventory/raw-materials/definitions', data),
+  updateRawMaterial: (id, data) => api.put(`/inventory/raw-materials/definitions/${id}`, data),
   deleteRawMaterial: (id) => api.delete(`/inventory/raw-materials/definitions/${id}`),
   getMaterialCategories: () => api.get('/inventory/raw-materials/categories'),
   getMaterialUoms: () => api.get('/inventory/raw-materials/uoms'),
@@ -230,6 +231,7 @@ export const stockTransferApi = {
   getTransferById: (id) => api.get(`/transfers/${id}`),
   createTransfer: (data) => api.post('/transfers', data),
   completeTransfer: (id) => api.patch(`/transfers/${id}/complete`),
+  cancelTransfer: (id) => api.patch(`/transfers/${id}/cancel`),
 };
 
 // 3c. Supplier Directory (Domain Module)
@@ -256,6 +258,8 @@ export const productionApi = {
   getBOMById: (id) => api.get(`/factory/compounding/boms/${id}`),
   createBOM: (data) => api.post('/factory/compounding/boms', data),
   createBom: (data) => api.post('/factory/compounding/boms', data),
+  updateBOM: (id, data) => api.put(`/factory/compounding/boms/${id}`, data),
+  updateBom: (id, data) => api.put(`/factory/compounding/boms/${id}`, data),
   activateBOM: (id) => api.patch(`/factory/compounding/boms/${id}/activate`),
   activateBom: (id) => api.patch(`/factory/compounding/boms/${id}/activate`),
   retireBOM: (id) => api.patch(`/factory/compounding/boms/${id}/retire`),
@@ -309,8 +313,17 @@ export const logisticsApi = {
   markAsDelivered: (id) => api.patch(`/dispatches/${id}/deliver`),
   cancelDispatch: (id) => api.patch(`/dispatches/${id}/cancel`),
   getVehicles: () => api.get('/vehicles'),
+  createVehicle: (data) => api.post('/vehicles', data),
+  updateVehicle: (id, data) => api.put(`/vehicles/${id}`, data),
+  deleteVehicle: (id) => api.delete(`/vehicles/${id}`),
   getDrivers: () => api.get('/drivers'),
-  getCustomers: () => api.get('/customers'),
+  createDriver: (data) => api.post('/drivers', data),
+  updateDriver: (id, data) => api.put(`/drivers/${id}`, data),
+  deleteDriver: (id) => api.delete(`/drivers/${id}`),
+  getCustomers: (params) => api.get('/customers', { params }),
+  createCustomer: (data) => api.post('/customers', data),
+  updateCustomer: (id, data) => api.put(`/customers/${id}`, data),
+  deleteCustomer: (id) => api.delete(`/customers/${id}`),
   getCustomerOrders: (params) => api.get('/customers/orders', { params }),
   getCustomerOrdersByCustomer: (customerId) => api.get(`/customers/${customerId}/orders`),
   createCustomerOrder: (data) => api.post('/customers/orders', data),
@@ -326,6 +339,7 @@ export const procurementApi = {
   getPurchaseOrderById: (id) => api.get(`/procurement/purchase-orders/${id}`),
   createPurchaseOrder: (data) => api.post('/procurement/purchase-orders', data),
   approvePurchaseOrder: (id) => api.patch(`/procurement/purchase-orders/${id}/approve`),
+  cancelPurchaseOrder: (id) => api.patch(`/procurement/purchase-orders/${id}/cancel`),
 };
 
 // 8a. Analytics & Time-Series Dashboard
@@ -347,8 +361,18 @@ export const aiApi = {
     api.get('/ai/forecast', { params: { materialId, horizonDays } }),
   getSupplierRankings: () => api.get('/ai/suppliers/ranking'),
   getQcRootCauses: (batchNumber) => api.get('/ai/qc/root-cause', { params: { batchNumber } }),
-  getAlerts: () => api.get('/procurement/recommendations'),
+  getAlerts: (params) => api.get('/ai/reorder-recommendations', { params }),
   submitAlert: (alertData) => api.post('/alerts', alertData),
+};
+
+// 9. Document Management
+export const documentApi = {
+  upload: (formData) => api.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  list: (category) => api.get('/documents', { params: category ? { category } : {} }),
+  getMetadata: (id) => api.get(`/documents/${id}`),
+  download: (id) => api.get(`/documents/${id}/download`, { responseType: 'blob' }),
 };
 
 export default api;

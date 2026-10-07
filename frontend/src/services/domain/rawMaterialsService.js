@@ -32,6 +32,14 @@ export const createRawMaterial = async (payload) => {
 };
 
 /**
+ * Updates an existing raw material SKU definition.
+ * Endpoint: PUT /api/v1/inventory/raw-materials/definitions/{materialId}
+ */
+export const updateRawMaterial = async (materialId, payload) => {
+  return inventoryApi.updateRawMaterial(materialId, payload);
+};
+
+/**
  * Retrieves material categories.
  * Endpoint: GET /api/v1/inventory/raw-materials/categories
  */

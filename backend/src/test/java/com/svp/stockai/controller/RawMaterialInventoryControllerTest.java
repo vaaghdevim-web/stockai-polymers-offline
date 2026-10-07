@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,9 +20,11 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -111,5 +114,27 @@ class RawMaterialInventoryControllerTest {
     private String validReceiptJson() {
         return "{\"materialId\":1,\"binId\":2,\"batchNo\":\"B-001\",\"lotNumber\":\"LOT-001\","
                 + "\"quantityKg\":25.0000,\"unitCost\":100.0000,\"qualityStatus\":\"Available\"}";
+    }
+
+    @Test
+    void updateRawMaterialUpdatesAndReturns200() throws Exception {
+        RawMaterialResponse updated = response(1L, "PP Granules Updated", "RM-PP-001");
+        when(rawMaterialQueryService.updateRawMaterial(eq(1L), any())).thenReturn(updated);
+
+        String payload = """
+                {
+                    "materialName": "PP Granules Updated",
+                    "standardCost": 150.00,
+                    "reorderLevel": 6000.00,
+                    "safetyStock": 2500.00
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/inventory/raw-materials/definitions/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.materialId").value(1))
+                .andExpect(jsonPath("$.materialName").value("PP Granules Updated"));
     }
 }

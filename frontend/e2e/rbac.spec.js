@@ -2,7 +2,7 @@ import { test, expect, request } from '@playwright/test';
 import { generateTotp } from './helpers/totp';
 
 test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
-  const API_BASE = 'http://localhost:8080/api/v1';
+  const API_BASE = process.env.VITE_BACKEND_URL ? `${process.env.VITE_BACKEND_URL}/api/v1` : 'http://localhost:18080/api/v1';
 
   let adminToken = '';
   let operatorToken = '';
@@ -11,7 +11,7 @@ test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
     const apiContext = await request.newContext();
 
     // 1. Authenticate Admin with dynamic TOTP
-    const adminTotp = generateTotp('SVP_STOCKAI_ADMIN_SECURE_MFA_SECRET_KEY');
+    const adminTotp = generateTotp('STOCKAIADMINMFA2');
     const adminRes = await apiContext.post(`${API_BASE}/auth/login`, {
       data: {
         usernameOrEmail: 'admin',
@@ -26,7 +26,7 @@ test.describe('Step 5 & 6 — RBAC Authoritative Matrix & Security E2E', () => {
     const operatorRes = await apiContext.post(`${API_BASE}/auth/login`, {
       data: {
         usernameOrEmail: 'operator01',
-        password: 'operator123',
+        password: 'admin123',
       },
     });
     const operatorBody = await operatorRes.json();

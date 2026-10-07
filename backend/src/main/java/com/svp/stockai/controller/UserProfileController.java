@@ -114,6 +114,12 @@ public class UserProfileController {
 
         user.setUserName(newUserName);
         user.setEmail(newEmail);
+        if (request.fullName() != null) {
+            user.setFullName(request.fullName().trim());
+        }
+        if (request.phoneNumber() != null) {
+            user.setPhoneNumber(request.phoneNumber().trim());
+        }
 
         return ResponseEntity.ok(
                 toProfile(appUserRepository.save(user))
@@ -190,6 +196,8 @@ public class UserProfileController {
 
         response.put("userId", user.getUserId());
         response.put("userName", user.getUserName());
+        response.put("fullName", user.getFullName());
+        response.put("phoneNumber", user.getPhoneNumber());
         response.put("email", user.getEmail());
         response.put("roles", roles);
         response.put("isActive", Boolean.TRUE.equals(user.getIsActive()));
@@ -206,7 +214,9 @@ public class UserProfileController {
 
     public record ProfileUpdateRequest(
             String userName,
-            String email
+            String fullName,
+            String email,
+            String phoneNumber
     ) {}
 
     public record PasswordChangeRequest(

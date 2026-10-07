@@ -35,6 +35,14 @@ public class RawMaterialInventoryController {
         return rawMaterialQueryService.createRawMaterial(request);
     }
 
+    @PutMapping("/definitions/{materialId:[0-9]+}")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
+    public RawMaterialResponse updateRawMaterialDefinition(
+            @PathVariable Long materialId,
+            @Valid @RequestBody com.svp.stockai.dto.CreateRawMaterialRequest request) {
+        return rawMaterialQueryService.updateRawMaterial(materialId, request);
+    }
+
     @DeleteMapping("/definitions/{materialId:[0-9]+}")
     @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER')")
     public java.util.Map<String, Object> deleteRawMaterial(@PathVariable Long materialId) {

@@ -74,7 +74,9 @@ export default function AdminSettings() {
   // Edit Profile Modal State
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [editProfileError, setEditProfileError] = useState(null);
   const [editProfileSuccess, setEditProfileSuccess] = useState(null);
@@ -238,6 +240,17 @@ export default function AdminSettings() {
     loadSecurityData();
   }, [loadSecurityData]);
 
+  // Open Edit Profile Modal
+  const handleOpenEditProfile = () => {
+    setEditUsername(profile?.userName || '');
+    setEditFullName(profile?.fullName || '');
+    setEditEmail(profile?.email || '');
+    setEditPhoneNumber(profile?.phoneNumber || '');
+    setEditProfileError(null);
+    setEditProfileSuccess(null);
+    setShowEditProfile(true);
+  };
+
   // Handle Edit Profile Submission
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -248,7 +261,9 @@ export default function AdminSettings() {
     try {
       const res = await updateCurrentUserProfile({
         userName: editUsername.trim(),
-        email: editEmail.trim()
+        fullName: editFullName.trim() || null,
+        email: editEmail.trim(),
+        phoneNumber: editPhoneNumber.trim() || null,
       });
       setProfile(res.data);
       setEditProfileSuccess('Profile updated successfully!');
@@ -645,12 +660,12 @@ export default function AdminSettings() {
                 </h2>
               </div>
               <button
-                disabled
-                title="Profile mutation endpoint (/api/v1/users/me) is not exposed by backend controllers. User profile is managed via server configuration."
+                onClick={handleOpenEditProfile}
                 className="btn btn-secondary btn-sm"
-                style={{ opacity: 0.65, cursor: 'not-allowed', fontSize: '11px' }}
+                style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Update your account username, email, full name, and phone number"
               >
-                Edit Profile (API Not Exposed)
+                <Edit2 size={12} /> Edit Profile
               </button>
             </div>
 
@@ -1250,11 +1265,11 @@ export default function AdminSettings() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={17} color="var(--accent-cyan)" />
               <h2 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                Security Audit & Event Logging Architecture
+                Security Audit Log Viewer
               </h2>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Security audit trails, authentication events, role grants, inventory mutations, and administrative activities are cryptographically recorded across backend Spring Boot transaction loggers and event streams.
+              Centralized runtime audit log querying via REST API endpoints is not currently implemented in this backend service version. Security and database transaction audit events are captured directly in server application log streams.
             </p>
             <div
               style={{
@@ -1263,11 +1278,11 @@ export default function AdminSettings() {
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-xs)',
                 fontSize: '11.5px',
-                color: 'var(--accent-emerald)',
+                color: 'var(--text-muted)',
                 fontFamily: 'var(--font-mono)'
               }}
             >
-              ✓ Immutable audit logs enabled · Real-time multi-tenant plant scoping enforced
+              Status: Audit Log Viewer API Not Exposed · Available via Server Logs
             </div>
           </div>
         </div>
@@ -1320,6 +1335,19 @@ export default function AdminSettings() {
 
               <div>
                 <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Kumar"
+                  className="input font-mono"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                   Email Address
                 </label>
                 <input
@@ -1328,6 +1356,19 @@ export default function AdminSettings() {
                   className="input font-mono"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 98400 12345"
+                  className="input font-mono"
+                  value={editPhoneNumber}
+                  onChange={(e) => setEditPhoneNumber(e.target.value)}
                 />
               </div>
 

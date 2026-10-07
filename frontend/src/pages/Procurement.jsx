@@ -116,6 +116,27 @@ export default function Procurement() {
     }
   };
 
+  const [cancellingPoId, setCancellingPoId] = useState(null);
+
+  const handleCancelPo = async (poId) => {
+    if (!window.confirm(`Are you sure you want to cancel Purchase Order #${poId}?`)) return;
+    try {
+      setCancellingPoId(poId);
+      setError(null);
+      setSuccessMsg(null);
+      await procurementApi.cancelPurchaseOrder(poId);
+      setSuccessMsg(`Purchase Order #${poId} cancelled successfully.`);
+      await fetchPurchaseOrders();
+      if (selectedPo && selectedPo.poId === poId) {
+        setSelectedPo(prev => ({ ...prev, status: 'Cancelled' }));
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || `Failed to cancel purchase order #${poId}`);
+    } finally {
+      setCancellingPoId(null);
+    }
+  };
+
   const handleOpenConvertToPo = (rec) => {
     setConvertingRec(rec);
     setIsPoModalOpen(true);
@@ -650,6 +671,17 @@ export default function Procurement() {
                               className="btn btn-primary btn-xs"
                             >
                               <Check size={12} /> {approvingPoId === po.poId ? 'Approving...' : 'Approve PO'}
+                            </button>
+                          )}
+                          {(po.status || '').toUpperCase() !== 'CANCELLED' && (po.status || '').toUpperCase() !== 'RECEIVED' && (po.status || '').toUpperCase() !== 'COMPLETED' && (
+                            <button
+                              onClick={() => handleCancelPo(po.poId)}
+                              disabled={cancellingPoId === po.poId}
+                              className="btn btn-secondary btn-xs"
+                              style={{ color: '#EF4444' }}
+                              title="Cancel Purchase Order"
+                            >
+                              <X size={12} /> {cancellingPoId === po.poId ? 'Cancelling...' : 'Cancel'}
                             </button>
                           )}
                         </div>

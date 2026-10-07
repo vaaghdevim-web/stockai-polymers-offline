@@ -36,6 +36,12 @@ public class AppUser {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
+    @Column(name = "full_name", length = 150)
+    private String fullName;
+
+    @Column(name = "phone_number", length = 50)
+    private String phoneNumber;
+
     @com.fasterxml.jackson.annotation.JsonIgnore
     @ToString.Exclude
     @Column(name = "mfa_secret", length = 255)

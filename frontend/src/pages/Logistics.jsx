@@ -18,7 +18,8 @@ import {
   Calendar,
   ShieldCheck,
   FileText,
-  ShoppingBag
+  ShoppingBag,
+  Building2
 } from 'lucide-react';
 import { logisticsApi, palletApi } from '../services/api';
 import CreateDispatchModal from '../components/CreateDispatchModal';
@@ -26,15 +27,19 @@ import CreatePalletModal from '../components/CreatePalletModal';
 import PalletLabelModal from '../components/PalletLabelModal';
 import DispatchGatePassModal from '../components/DispatchGatePassModal';
 import CreateCustomerOrderModal from '../components/CreateCustomerOrderModal';
+import VehicleModal from '../components/VehicleModal';
+import DriverModal from '../components/DriverModal';
+import CustomerModal from '../components/CustomerModal';
 import BarcodeVisual from '../components/BarcodeVisual';
 
 export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarcodeGenerator }) {
-  const [activeTab, setActiveTab] = useState('pallets'); // 'pallets' | 'orders' | 'dispatches' | 'vehicles' | 'drivers'
+  const [activeTab, setActiveTab] = useState('pallets'); // 'pallets' | 'orders' | 'dispatches' | 'vehicles' | 'drivers' | 'customers'
   const [pallets, setPallets] = useState([]);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [dispatches, setDispatches] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   
   const [showDispatchModal, setShowDispatchModal] = useState(false);
@@ -44,6 +49,13 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [selectedGatePassDispatch, setSelectedGatePassDispatch] = useState(null);
   const [showGatePassModal, setShowGatePassModal] = useState(false);
+
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -113,6 +125,19 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
     }
   };
 
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await logisticsApi.getCustomers({ activeOnly: false });
+      setCustomers(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch customers.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'pallets') {
       fetchPallets();
@@ -124,6 +149,8 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
       fetchVehicles();
     } else if (activeTab === 'drivers') {
       fetchDrivers();
+    } else if (activeTab === 'customers') {
+      fetchCustomers();
     }
   }, [activeTab]);
 
@@ -133,6 +160,56 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
       fetchDispatches();
     } catch (err) {
       alert(`Dispatch Action Failed: ${err.message}`);
+    }
+  };
+
+  const handleDeliverDispatch = async (dispatchId) => {
+    if (!window.confirm(`Confirm receipt: Mark dispatch #${dispatchId} as DELIVERED to customer destination?`)) return;
+    try {
+      await logisticsApi.markAsDelivered(dispatchId);
+      fetchDispatches();
+    } catch (err) {
+      alert(`Deliver Dispatch Failed: ${err?.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleCancelDispatch = async (dispatchId) => {
+    if (!window.confirm(`Are you sure you want to CANCEL dispatch #${dispatchId}? This will void the gate pass.`)) return;
+    try {
+      await logisticsApi.cancelDispatch(dispatchId);
+      fetchDispatches();
+    } catch (err) {
+      alert(`Cancel Dispatch Failed: ${err?.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicleId) => {
+    if (!window.confirm(`Are you sure you want to delete vehicle #${vehicleId}?`)) return;
+    try {
+      await logisticsApi.deleteVehicle(vehicleId);
+      fetchVehicles();
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to delete vehicle.');
+    }
+  };
+
+  const handleDeleteDriver = async (driverId) => {
+    if (!window.confirm(`Are you sure you want to delete driver #${driverId}?`)) return;
+    try {
+      await logisticsApi.deleteDriver(driverId);
+      fetchDrivers();
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to delete driver.');
+    }
+  };
+
+  const handleDeleteCustomer = async (customerId) => {
+    if (!window.confirm(`Are you sure you want to delete customer #${customerId}?`)) return;
+    try {
+      await logisticsApi.deleteCustomer(customerId);
+      fetchCustomers();
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Failed to delete customer.');
     }
   };
 
@@ -193,12 +270,23 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
     );
   });
 
+  const filteredCustomers = customers.filter((c) => {
+    const q = search.toLowerCase();
+    return (
+      (c.customerName && c.customerName.toLowerCase().includes(q)) ||
+      (c.customerCode && c.customerCode.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    );
+  });
+
   const refreshCurrentTab = () => {
     if (activeTab === 'pallets') fetchPallets();
     else if (activeTab === 'orders') fetchCustomerOrders();
     else if (activeTab === 'dispatches') fetchDispatches();
     else if (activeTab === 'vehicles') fetchVehicles();
     else if (activeTab === 'drivers') fetchDrivers();
+    else if (activeTab === 'customers') fetchCustomers();
   };
 
   return (
@@ -263,6 +351,36 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
             </button>
           )}
 
+          {activeTab === 'vehicles' && (
+            <button 
+              onClick={() => { setSelectedVehicle(null); setShowVehicleModal(true); }}
+              className="btn btn-primary btn-sm"
+              style={{ background: '#0284C7', borderColor: '#0284C7' }}
+            >
+              <Plus size={14} /> + Add Vehicle
+            </button>
+          )}
+
+          {activeTab === 'drivers' && (
+            <button 
+              onClick={() => { setSelectedDriver(null); setShowDriverModal(true); }}
+              className="btn btn-primary btn-sm"
+              style={{ background: '#0284C7', borderColor: '#0284C7' }}
+            >
+              <Plus size={14} /> + Enrol Driver
+            </button>
+          )}
+
+          {activeTab === 'customers' && (
+            <button 
+              onClick={() => { setSelectedCustomer(null); setShowCustomerModal(true); }}
+              className="btn btn-primary btn-sm"
+              style={{ background: '#0284C7', borderColor: '#0284C7' }}
+            >
+              <Plus size={14} /> + Onboard Customer
+            </button>
+          )}
+
           <button 
             onClick={refreshCurrentTab}
             disabled={loading}
@@ -324,6 +442,12 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
           >
             <User size={14} /> Driver Roster ({drivers.length})
           </button>
+          <button
+            onClick={() => setActiveTab('customers')}
+            className={`tab-button ${activeTab === 'customers' ? 'active' : ''}`}
+          >
+            <Building2 size={14} /> Commercial Customers ({customers.length})
+          </button>
         </div>
 
         {/* Filter Bar */}
@@ -346,6 +470,7 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                 activeTab === 'pallets' ? 'Search Pallet ID, SSCC, Bin...' :
                 activeTab === 'dispatches' ? 'Search Dispatch No, Customer, Vehicle...' :
                 activeTab === 'vehicles' ? 'Search Vehicle Number, Type...' :
+                activeTab === 'customers' ? 'Search Customer Name, ERP Code...' :
                 'Search Driver Name, License, Phone...'
               }
               value={search}
@@ -603,13 +728,35 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                             <Printer size={12} color="#0284C7" /> Gate Pass
                           </button>
 
-                          {!isDispatched && (
+                          {(status === 'CREATED' || status === 'PENDING') && (
                             <button 
                               onClick={() => handleDispatchAction(dsp.dispatchId)}
                               className="btn btn-primary btn-xs"
                               style={{ fontSize: '11px', padding: '4px 8px' }}
                             >
                               Authorize →
+                            </button>
+                          )}
+
+                          {(status === 'DISPATCHED' || status === 'IN_TRANSIT') && (
+                            <button
+                              onClick={() => handleDeliverDispatch(dsp.dispatchId)}
+                              className="btn btn-secondary btn-xs"
+                              style={{ fontSize: '11px', padding: '4px 8px', color: '#059669', borderColor: '#A7F3D0' }}
+                              title="Mark shipment delivered at customer facility"
+                            >
+                              <CheckCircle2 size={12} /> Delivered
+                            </button>
+                          )}
+
+                          {status !== 'DELIVERED' && status !== 'CANCELLED' && (
+                            <button
+                              onClick={() => handleCancelDispatch(dsp.dispatchId)}
+                              className="btn btn-ghost btn-xs"
+                              style={{ fontSize: '11px', padding: '4px 8px', color: '#EF4444' }}
+                              title="Cancel dispatch and void gate pass"
+                            >
+                              Cancel
                             </button>
                           )}
                         </div>
@@ -640,6 +787,7 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                   <th>Vehicle Type</th>
                   <th style={{ textAlign: 'right' }}>Max Capacity</th>
                   <th>Operational Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -662,13 +810,31 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                         {v.isActive ? 'AVAILABLE / ACTIVE' : 'MAINTENANCE / INACTIVE'}
                       </span>
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => { setSelectedVehicle(v); setShowVehicleModal(true); }}
+                          className="btn btn-secondary btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVehicle(v.vehicleId)}
+                          className="btn btn-ghost btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px', color: '#EF4444' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
 
                 {filteredVehicles.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
-                      No vehicles registered in the fleet repository.
+                    <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
+                      No vehicles registered in the fleet repository. Click "+ Add Vehicle" to register one.
                     </td>
                   </tr>
                 )}
@@ -688,6 +854,7 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                   <th>License Expiry</th>
                   <th>Contact Phone</th>
                   <th>Roster Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -718,13 +885,104 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
                         {dr.isActive ? 'ON ROSTER / AVAILABLE' : 'OFF DUTY'}
                       </span>
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => { setSelectedDriver(dr); setShowDriverModal(true); }}
+                          className="btn btn-secondary btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDriver(dr.driverId)}
+                          className="btn btn-ghost btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px', color: '#EF4444' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
 
                 {filteredDrivers.length === 0 && !loading && (
                   <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
+                      No drivers registered in the fleet roster. Click "+ Enrol Driver" to add one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 5: Commercial Customers Directory */}
+        {activeTab === 'customers' && (
+          <div className="data-table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Customer ERP Code</th>
+                  <th>Enterprise Name</th>
+                  <th>Contact Information</th>
+                  <th>Account Status</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((c, idx) => (
+                  <tr key={c.customerId || idx}>
+                    <td>
+                      <div className="font-mono" style={{ fontWeight: '800', color: '#0284C7', fontSize: '13px' }}>
+                        {c.customerCode}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer ID: #{c.customerId}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '13px' }}>
+                        {c.customerName}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '12px', color: 'var(--text-primary)' }}>
+                        {c.phone || 'No phone recorded'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {c.email || 'No email recorded'}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={c.isActive ? 'badge badge-emerald' : 'badge badge-amber'}>
+                        {c.isActive ? 'ACTIVE / APPROVED' : 'INACTIVE'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                        <button
+                          onClick={() => { setSelectedCustomer(c); setShowCustomerModal(true); }}
+                          className="btn btn-secondary btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomer(c.customerId)}
+                          className="btn btn-ghost btn-xs"
+                          style={{ fontSize: '11px', padding: '3px 8px', color: '#EF4444' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredCustomers.length === 0 && !loading && (
+                  <tr>
                     <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '32px' }}>
-                      No drivers registered in the fleet roster.
+                      No commercial customers registered. Click "+ Onboard Customer" to add one.
                     </td>
                   </tr>
                 )}
@@ -766,6 +1024,36 @@ export default function Logistics({ onNavigate, onOpenBarcodeScanner, onOpenBarc
           setSelectedGatePassDispatch(null);
         }}
         dispatch={selectedGatePassDispatch}
+      />
+
+      <VehicleModal
+        isOpen={showVehicleModal}
+        onClose={() => {
+          setShowVehicleModal(false);
+          setSelectedVehicle(null);
+        }}
+        vehicle={selectedVehicle}
+        onSaved={fetchVehicles}
+      />
+
+      <DriverModal
+        isOpen={showDriverModal}
+        onClose={() => {
+          setShowDriverModal(false);
+          setSelectedDriver(null);
+        }}
+        driver={selectedDriver}
+        onSaved={fetchDrivers}
+      />
+
+      <CustomerModal
+        isOpen={showCustomerModal}
+        onClose={() => {
+          setShowCustomerModal(false);
+          setSelectedCustomer(null);
+        }}
+        customer={selectedCustomer}
+        onSaved={fetchCustomers}
       />
     </div>
   );

@@ -115,28 +115,17 @@ export default function Dashboard({ onNavigate }) {
       }))
     : [];
 
-  const dynamicTrendData = trendPoints.length > 0 ? trendPoints : [
-    { label: 'W1', value: 4.2 },
-    { label: 'W2', value: 4.4 },
-    { label: 'W3', value: 4.6 },
-    { label: 'W4', value: 4.86 }
-  ];
+  const dynamicTrendData = Array.isArray(trendPoints) ? trendPoints : [];
 
   const dynamicMovements = (Array.isArray(movements) && movements.length > 0)
     ? movements.map((m, idx) => ({
         time: m.time || (m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : `${(idx + 1) * 15}m ago`),
         material: m.material || m.materialName || 'Polymer Granules',
         type: m.type || (m.movementType === 'ISSUE' || m.movementType === 'CONSUMPTION' ? 'OUT' : 'IN'),
-        quantity: typeof m.quantity === 'number' ? `${m.quantity.toLocaleString()} ${m.uom || 'kg'}` : (m.quantity || '500 kg'),
+        quantity: typeof m.quantity === 'number' ? `${m.quantity.toLocaleString()} ${m.uom || 'kg'}` : (m.quantity || '0 kg'),
         ref: m.referenceNumber || m.ref || `MOV-${idx + 101}`,
       }))
-    : [
-        { time: '10:45 AM', material: 'PP Granules (Natural)', type: 'OUT', quantity: '500 kg', ref: 'PROD-2026-001' },
-        { time: '10:15 AM', material: 'Masterbatch (White)', type: 'IN', quantity: '200 kg', ref: 'PO-2026-089' },
-        { time: '09:30 AM', material: 'BOPP Film (12 Micron)', type: 'OUT', quantity: '5 rolls', ref: 'PROD-2026-002' },
-        { time: '08:45 AM', material: 'PP Granules (Natural)', type: 'IN', quantity: '2,000 kg', ref: 'GRN-2026-045' },
-        { time: '08:00 AM', material: 'Printing Ink (Red)', type: 'OUT', quantity: '10 kg', ref: 'PROD-2026-003' },
-      ];
+    : [];
 
   const handleTelemetryEvent = useCallback(() => {}, []);
   const handleAnomalyEvent = useCallback((payload) => {
@@ -377,41 +366,49 @@ export default function Dashboard({ onNavigate }) {
           </div>
 
           <div style={{ height: '220px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dynamicTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0284C7" stopOpacity={0.18}/>
-                    <stop offset="95%" stopColor="#0284C7" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                <YAxis 
-                  domain={['auto', 'auto']} 
-                  tickFormatter={(val) => `₹ ${val} Cr`} 
-                  tick={{ fontSize: 11, fill: '#64748B' }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                />
-                <Tooltip 
-                  formatter={(value) => [`₹ ${Number(value).toFixed(2)} Cr`, 'Inventory Valuation']}
-                  labelFormatter={(lbl) => `Interval: ${lbl}`}
-                  contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="value" 
-                  stroke="#0284C7" 
-                  strokeWidth={2.5} 
-                  fillOpacity={1} 
-                  fill="url(#colorVal)" 
-                  dot={{ r: 3, fill: '#0284C7' }}
-                  isAnimationActive={true}
-                  animationDuration={400}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {dynamicTrendData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dynamicTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0284C7" stopOpacity={0.18}/>
+                      <stop offset="95%" stopColor="#0284C7" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
+                  <YAxis 
+                    domain={['auto', 'auto']} 
+                    tickFormatter={(val) => `₹ ${val} Cr`} 
+                    tick={{ fontSize: 11, fill: '#64748B' }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                  />
+                  <Tooltip 
+                    formatter={(value) => [`₹ ${Number(value).toFixed(2)} Cr`, 'Inventory Valuation']}
+                    labelFormatter={(lbl) => `Interval: ${lbl}`}
+                    contentStyle={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '6px', fontSize: '12px' }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#0284C7" 
+                    strokeWidth={2.5} 
+                    fillOpacity={1} 
+                    fill="url(#colorVal)" 
+                    dot={{ r: 3, fill: '#0284C7' }}
+                    isAnimationActive={true}
+                    animationDuration={400}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                <TrendingUp size={32} style={{ marginBottom: '8px', opacity: 0.4 }} />
+                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>No valuation trend data available</p>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Valuation checkpoints will automatically plot here over time.</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -543,55 +540,63 @@ export default function Dashboard({ onNavigate }) {
                 </tr>
               </thead>
               <tbody>
-                {dynamicMovements.map((m, idx) => (
-                  <tr key={idx}>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>{m.time}</td>
-                    <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{m.material}</td>
-                    <td>
-                      {m.type === 'IN' ? (
-                        <span style={{
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: '#ECFDF5',
-                          color: '#047857',
-                          fontSize: '10.5px',
-                          fontWeight: '700',
-                          fontFamily: 'var(--font-mono)'
-                        }}>
-                          IN
-                        </span>
-                      ) : (
-                        <span style={{
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: '#FEF2F2',
-                          color: '#B91C1C',
-                          fontSize: '10.5px',
-                          fontWeight: '700',
-                          fontFamily: 'var(--font-mono)'
-                        }}>
-                          OUT
-                        </span>
-                      )}
-                    </td>
-                    <td className="font-mono" style={{ textAlign: 'right', fontWeight: '600' }}>
-                      {m.quantity}
-                    </td>
-                    <td className="font-mono" style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: '600' }}>
-                      {m.ref}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button
-                        onClick={() => setGenealogyBatch(m.ref)}
-                        className="btn btn-ghost btn-xs"
-                        style={{ padding: '2px 6px', fontSize: '10.5px', color: '#0284C7' }}
-                        title="Trace Batch Movement"
-                      >
-                        <GitBranch size={11} />
-                      </button>
+                {dynamicMovements.length > 0 ? (
+                  dynamicMovements.map((m, idx) => (
+                    <tr key={idx}>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>{m.time}</td>
+                      <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{m.material}</td>
+                      <td>
+                        {m.type === 'IN' ? (
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#ECFDF5',
+                            color: '#047857',
+                            fontSize: '10.5px',
+                            fontWeight: '700',
+                            fontFamily: 'var(--font-mono)'
+                          }}>
+                            IN
+                          </span>
+                        ) : (
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: '#FEF2F2',
+                            color: '#B91C1C',
+                            fontSize: '10.5px',
+                            fontWeight: '700',
+                            fontFamily: 'var(--font-mono)'
+                          }}>
+                            OUT
+                          </span>
+                        )}
+                      </td>
+                      <td className="font-mono" style={{ textAlign: 'right', fontWeight: '600' }}>
+                        {m.quantity}
+                      </td>
+                      <td className="font-mono" style={{ fontSize: '11.5px', color: '#0284C7', fontWeight: '600' }}>
+                        {m.ref}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={() => setGenealogyBatch(m.ref)}
+                          className="btn btn-ghost btn-xs"
+                          style={{ padding: '2px 6px', fontSize: '10.5px', color: '#0284C7' }}
+                          title="Trace Batch Movement"
+                        >
+                          <GitBranch size={11} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+                      No movement data available
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

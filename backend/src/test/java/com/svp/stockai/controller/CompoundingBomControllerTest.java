@@ -159,4 +159,39 @@ class CompoundingBomControllerTest {
                 .andExpect(jsonPath("$.desiredBatchWeightKg").value(500.0))
                 .andExpect(jsonPath("$.calculatedRequirements[0].requiredQuantityKg").value(425.0));
     }
+
+    @Test
+    void updateBom_returns200AndUpdatedBom() throws Exception {
+        CompoundingBomResponse response = CompoundingBomResponse.builder()
+                .compoundingBomId(1L)
+                .bomCode("BOM-SVP-01")
+                .version("1.1")
+                .targetBatchWeightKg(new BigDecimal("1200.0000"))
+                .status("Draft")
+                .build();
+
+        when(compoundingBomService.updateBom(eq(1L), any(), any())).thenReturn(response);
+
+        String jsonPayload = """
+                {
+                    "bomCode": "BOM-SVP-01",
+                    "version": "1.1",
+                    "targetBatchWeightKg": 1200.0000,
+                    "items": [
+                        {
+                            "materialId": 1,
+                            "percentage": 100.0000,
+                            "isRequired": true
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/factory/compounding/boms/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.compoundingBomId").value(1))
+                .andExpect(jsonPath("$.version").value("1.1"));
+    }
 }

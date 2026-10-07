@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Boxes, AlertCircle, Plus, Layers, Tag, DollarSign, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { createRawMaterial, getMaterialCategories, getMaterialUoms, extractErrorMessage } from '../services/domain/rawMaterialsService';
+import { X, Boxes, AlertCircle, Plus, Layers, Tag, DollarSign, Clock, ShieldCheck, CheckCircle2, Edit3 } from 'lucide-react';
+import { createRawMaterial, updateRawMaterial, getMaterialCategories, getMaterialUoms, extractErrorMessage } from '../services/domain/rawMaterialsService';
 
-export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCreated }) {
+export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCreated, material = null }) {
   const [materialName, setMaterialName] = useState('');
   const [materialCode, setMaterialCode] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -68,21 +68,34 @@ export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCrea
     };
 
     fetchMetadata();
-    setMaterialName('');
-    setMaterialCode('');
-    setStandardCost('110.00');
-    setReorderLevel('5000');
-    setSafetyStock('2000');
-    setLeadTimeDays('7');
+    if (material) {
+      setMaterialName(material.materialName || '');
+      setMaterialCode(material.materialCode || '');
+      setCategoryId(material.categoryId ? String(material.categoryId) : '');
+      setDefaultUomId(material.defaultUomId ? String(material.defaultUomId) : '');
+      setStandardCost(material.standardCost != null ? String(material.standardCost) : '110.00');
+      setReorderLevel(material.reorderLevel != null ? String(material.reorderLevel) : '5000');
+      setSafetyStock(material.safetyStock != null ? String(material.safetyStock) : '2000');
+      setLeadTimeDays(material.leadTimeDays != null ? String(material.leadTimeDays) : '7');
+    } else {
+      setMaterialName('');
+      setMaterialCode('');
+      setStandardCost('110.00');
+      setReorderLevel('5000');
+      setSafetyStock('2000');
+      setLeadTimeDays('7');
+    }
     setError(null);
-  }, [isOpen]);
+  }, [isOpen, material]);
 
   // Auto-generate material code based on name if not typed manually
   const handleNameChange = (e) => {
     const val = e.target.value;
     setMaterialName(val);
-    const sanitized = val.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-');
-    setMaterialCode(sanitized ? `RM-${sanitized}` : '');
+    if (!material) {
+      const sanitized = val.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-');
+      setMaterialCode(sanitized ? `RM-${sanitized}` : '');
+    }
   };
 
   if (!isOpen) return null;
@@ -109,14 +122,16 @@ export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCrea
         leadTimeDays: Number(leadTimeDays) || 7,
       };
 
-      const res = await createRawMaterial(payload);
+      const res = material?.materialId
+        ? await updateRawMaterial(material.materialId, payload)
+        : await createRawMaterial(payload);
 
       if (onMaterialCreated) {
         onMaterialCreated(res.data);
       }
       onClose();
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to define new raw material.'));
+      setError(extractErrorMessage(err, material ? 'Failed to update raw material.' : 'Failed to define new raw material.'));
     } finally {
       setSubmitting(false);
     }
@@ -139,14 +154,14 @@ export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCrea
                 justifyContent: 'center',
               }}
             >
-              <Boxes size={18} color="var(--accent-cyan)" />
+              {material ? <Edit3 size={18} color="var(--accent-cyan)" /> : <Boxes size={18} color="var(--accent-cyan)" />}
             </div>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
-                Define New Raw Material SKU
+                {material ? `Edit Material SKU: ${material.materialCode || material.materialName}` : 'Define New Raw Material SKU'}
               </h3>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-                Register new polymer resin, filler, or additive into factory catalog
+                {material ? 'Update polymer formulation specifications, costs, and thresholds' : 'Register new polymer resin, filler, or additive into factory catalog'}
               </p>
             </div>
           </div>
@@ -338,10 +353,10 @@ export default function CreateRawMaterialModal({ isOpen, onClose, onMaterialCrea
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               {submitting ? (
-                <>Registering...</>
+                <>{material ? 'Saving...' : 'Registering...'}</>
               ) : (
                 <>
-                  <Plus size={14} /> Define Raw Material
+                  {material ? <CheckCircle2 size={14} /> : <Plus size={14} />} {material ? 'Save Changes' : 'Define Raw Material'}
                 </>
               )}
             </button>

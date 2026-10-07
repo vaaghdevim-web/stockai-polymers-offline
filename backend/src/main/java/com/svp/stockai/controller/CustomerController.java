@@ -46,6 +46,71 @@ public class CustomerController {
         return mapToResponse(c);
     }
 
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'DISPATCH_EXECUTIVE')")
+    @org.springframework.transaction.annotation.Transactional
+    public CustomerResponse createCustomer(@Valid @RequestBody com.svp.stockai.dto.CustomerRequest request) {
+        String code = request.getCustomerCode();
+        if (code == null || code.isBlank()) {
+            code = "CUST-" + java.util.UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        } else {
+            code = code.trim();
+            if (customerRepository.findByCustomerCode(code).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Customer code already exists: " + code);
+            }
+        }
+
+        Customer customer = Customer.builder()
+                .customerName(request.getCustomerName().trim())
+                .customerCode(code)
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
+                .build();
+
+        return mapToResponse(customerRepository.save(customer));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN', 'DISPATCH_EXECUTIVE')")
+    @org.springframework.transaction.annotation.Transactional
+    public CustomerResponse updateCustomer(
+            @PathVariable Long id,
+            @Valid @RequestBody com.svp.stockai.dto.CustomerRequest request) {
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found with ID: " + id));
+
+        if (request.getCustomerCode() != null && !request.getCustomerCode().isBlank()) {
+            String code = request.getCustomerCode().trim();
+            customerRepository.findByCustomerCode(code).ifPresent(other -> {
+                if (!other.getCustomerId().equals(id)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Customer code already in use: " + code);
+                }
+            });
+            customer.setCustomerCode(code);
+        }
+
+        customer.setCustomerName(request.getCustomerName().trim());
+        customer.setEmail(request.getEmail());
+        customer.setPhone(request.getPhone());
+        if (request.getIsActive() != null) {
+            customer.setIsActive(request.getIsActive());
+        }
+
+        return mapToResponse(customerRepository.save(customer));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'MANAGER', 'ADMIN')")
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteCustomer(@PathVariable Long id) {
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found with ID: " + id));
+        customerRepository.delete(customer);
+    }
+
     @GetMapping("/orders")
     public ResponseEntity<List<CustomerOrderResponse>> getCustomerOrders(
             @RequestParam(required = false) Long customerId,

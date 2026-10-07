@@ -273,6 +273,46 @@ public class StockTransferService {
         return mapToResponse(completed, items);
     }
 
+    @Transactional
+    public StockTransferResponse cancelTransfer(Long transferId, String currentUsername) {
+        StockTransfer transfer = stockTransferRepository.findById(transferId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Stock transfer not found with ID: " + transferId));
+
+        if ("Completed".equalsIgnoreCase(transfer.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot cancel an already completed stock transfer");
+        }
+        if ("Cancelled".equalsIgnoreCase(transfer.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Stock transfer " + transfer.getTransferNumber() + " is already cancelled");
+        }
+
+        List<StockTransferItem> items = stockTransferItemRepository.findByTransfer_TransferId(transferId);
+        for (StockTransferItem item : items) {
+            Inventory sourceInv = null;
+            if (item.getMaterialBatch() != null && item.getFromBin() != null) {
+                sourceInv = inventoryRepository.findByMaterialBatch_BatchIdAndBin_BinId(
+                        item.getMaterialBatch().getBatchId(), item.getFromBin().getBinId()).orElse(null);
+            } else if (item.getFinishedBatch() != null && item.getFromBin() != null) {
+                sourceInv = inventoryRepository.findByFinishedBatch_FinishedBatchIdAndBin_BinId(
+                        item.getFinishedBatch().getFinishedBatchId(), item.getFromBin().getBinId()).orElse(null);
+            }
+            if (sourceInv != null && sourceInv.getReservedQty() != null && sourceInv.getReservedQty().compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal releaseQty = item.getQuantity() != null ? item.getQuantity().min(sourceInv.getReservedQty()) : BigDecimal.ZERO;
+                if (releaseQty.compareTo(BigDecimal.ZERO) > 0) {
+                    sourceInv.setReservedQty(sourceInv.getReservedQty().subtract(releaseQty));
+                    inventoryRepository.save(sourceInv);
+                }
+            }
+        }
+
+        transfer.setStatus("Cancelled");
+        StockTransfer cancelled = stockTransferRepository.save(transfer);
+        log.info("Stock transfer {} cancelled by {}", cancelled.getTransferNumber(), currentUsername);
+        return mapToResponse(cancelled, items);
+    }
+
     @Transactional(readOnly = true)
     public StockTransferResponse getTransferById(Long transferId) {
         StockTransfer transfer = stockTransferRepository.findById(transferId)

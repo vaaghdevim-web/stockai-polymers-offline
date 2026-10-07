@@ -38,6 +38,15 @@ public class StockTransferController {
         return stockTransferService.completeTransfer(id, username);
     }
 
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('SUPERVISOR', 'ADMIN', 'MANAGER', 'OPERATOR')")
+    public StockTransferResponse cancelTransfer(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return stockTransferService.cancelTransfer(id, username);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public StockTransferResponse getTransferById(@PathVariable Long id) {

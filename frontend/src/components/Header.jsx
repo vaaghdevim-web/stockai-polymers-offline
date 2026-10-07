@@ -11,7 +11,11 @@ import {
   UserCheck, 
   User, 
   Monitor, 
-  Smartphone 
+  Smartphone,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 import { getCurrentUserProfile } from '../services/domain/adminService';
 import { procurementApi } from '../services/api';
@@ -33,10 +37,32 @@ export default function Header({
 }) {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [alertCount, setAlertCount] = useState(3);
+  const [alerts, setAlerts] = useState([]);
+  const [alertCount, setAlertCount] = useState(0);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const alertsRef = useRef(null);
+
+  const loadAlerts = () => {
+    setLoadingAlerts(true);
+    procurementApi.getRecommendations()
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setAlerts(res.data);
+          const count = res.data.filter(r => (r.status || '').toUpperCase() === 'NEW' || (r.priority || '').toUpperCase() === 'CRITICAL').length;
+          setAlertCount(count || res.data.length);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load active alerts from backend:', err);
+      })
+      .finally(() => {
+        setLoadingAlerts(false);
+      });
+  };
 
   // Fetch user profile and active alerts count on mount
   useEffect(() => {
@@ -50,14 +76,7 @@ export default function Header({
         })
         .catch(() => {});
 
-      procurementApi.getRecommendations()
-        .then((res) => {
-          if (isMounted && Array.isArray(res.data)) {
-            const count = res.data.filter(r => (r.status || '').toUpperCase() === 'NEW' || (r.priority || '').toUpperCase() === 'CRITICAL').length;
-            setAlertCount(count || res.data.length || 0);
-          }
-        })
-        .catch(() => {});
+      loadAlerts();
     }
     return () => {
       isMounted = false;
@@ -69,6 +88,9 @@ export default function Header({
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsProfileOpen(false);
+      }
+      if (alertsRef.current && !alertsRef.current.contains(event.target)) {
+        setIsAlertsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -282,56 +304,219 @@ export default function Header({
           </button>
         )}
 
-        {/* Notifications Icon Button */}
-        <button
-          onClick={onOpenCommandPalette}
-          title={`System Notifications & Alerts (${alertCount} active)`}
-          style={{
-            position: 'relative',
-            background: 'transparent',
-            border: '1px solid var(--border-default)',
-            borderRadius: '6px',
-            padding: '7px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)',
-            transition: 'all 0.15s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--bg-surface-hover)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--text-secondary)';
-          }}
-        >
-          <Bell size={17} />
-          {alertCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '-4px',
-              right: '-4px',
-              minWidth: '16px',
-              height: '16px',
-              padding: '0 3px',
-              borderRadius: '8px',
-              background: '#EF4444',
-              color: '#FFFFFF',
-              fontSize: '9.5px',
-              fontWeight: '700',
-              fontFamily: 'var(--font-mono)',
+        {/* Notifications & Active Inventory Alerts Bell Button */}
+        <div style={{ position: 'relative' }} ref={alertsRef}>
+          <button
+            onClick={() => {
+              setIsAlertsOpen(prev => !prev);
+              if (!isAlertsOpen) loadAlerts();
+            }}
+            title={`System Notifications & Alerts (${alertCount} active)`}
+            style={{
+              position: 'relative',
+              background: isAlertsOpen ? 'var(--bg-surface-hover)' : 'transparent',
+              border: '1px solid var(--border-default)',
+              borderRadius: '6px',
+              padding: '7px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 4px rgba(239, 68, 68, 0.4)'
+              cursor: 'pointer',
+              color: isAlertsOpen ? 'var(--text-primary)' : 'var(--text-secondary)',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-surface-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isAlertsOpen) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }
+            }}
+          >
+            <Bell size={17} />
+            {alertCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                minWidth: '16px',
+                height: '16px',
+                padding: '0 3px',
+                borderRadius: '8px',
+                background: '#EF4444',
+                color: '#FFFFFF',
+                fontSize: '9.5px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-mono)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 4px rgba(239, 68, 68, 0.4)'
+              }}>
+                {alertCount}
+              </span>
+            )}
+          </button>
+
+          {/* Active Alerts & Notifications Popover */}
+          {isAlertsOpen && (
+            <div style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              width: '380px',
+              background: '#FFFFFF',
+              borderRadius: '10px',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              border: '1px solid var(--border-default)',
+              zIndex: 100,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
             }}>
-              {alertCount}
-            </span>
+              {/* Header */}
+              <div style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--border-default)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#F8FAFC'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Bell size={15} color="#0284C7" />
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    Active Inventory Alerts
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    background: alertCount > 0 ? '#FEE2E2' : '#E0F2FE',
+                    color: alertCount > 0 ? '#DC2626' : '#0284C7',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontFamily: 'var(--font-mono)'
+                  }}>
+                    {alertCount}
+                  </span>
+                </div>
+                <button
+                  onClick={loadAlerts}
+                  disabled={loadingAlerts}
+                  className="btn btn-ghost btn-xs"
+                  title="Refresh Alerts"
+                  style={{ padding: '3px 6px' }}
+                >
+                  <RefreshCw size={12} className={loadingAlerts ? 'animate-spin' : ''} />
+                </button>
+              </div>
+
+              {/* Alerts Body */}
+              <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '8px' }}>
+                {alerts.length > 0 ? (
+                  alerts.slice(0, 8).map((al, idx) => {
+                    const isCritical = (al.priority || '').toUpperCase() === 'CRITICAL' || (al.status || '').toUpperCase() === 'CRITICAL';
+                    return (
+                      <div
+                        key={al.recommendationId || al.id || idx}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '6px',
+                          border: `1px solid ${isCritical ? '#FCA5A5' : 'var(--border-subtle)'}`,
+                          background: isCritical ? '#FFF5F5' : '#FAFAFA',
+                          marginBottom: '6px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '12.5px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                            {al.materialName || al.materialCode || `Raw Material Alert #${idx + 1}`}
+                          </span>
+                          <span style={{
+                            fontSize: '9.5px',
+                            fontWeight: '700',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: isCritical ? '#EF4444' : '#F59E0B',
+                            color: '#FFFFFF',
+                            fontFamily: 'var(--font-mono)'
+                          }}>
+                            {al.priority || (isCritical ? 'CRITICAL' : 'REORDER')}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                          {al.reason || al.recommendationReason || (al.recommendedOrderQtyKg ? `Stock depleted below threshold. Suggested reorder: ${Number(al.recommendedOrderQtyKg).toLocaleString()} KG` : 'Inventory below safety stock buffer.')}
+                        </div>
+
+                        {al.materialCode && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                            <span className="font-mono" style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>
+                              SKU: {al.materialCode}
+                            </span>
+                            {onNavigate && (
+                              <button
+                                onClick={() => {
+                                  setIsAlertsOpen(false);
+                                  onNavigate('procurement');
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#0284C7',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '2px'
+                                }}
+                              >
+                                Procurement <ArrowRight size={10} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <CheckCircle2 size={24} color="#10B981" style={{ margin: '0 auto 8px' }} />
+                    <p style={{ fontSize: '12.5px', fontWeight: '600', margin: '0 0 2px' }}>All inventory levels normal</p>
+                    <p style={{ fontSize: '11px', margin: 0 }}>No active replenishment or safety threshold alerts.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {onNavigate && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderTop: '1px solid var(--border-default)',
+                  background: '#F8FAFC',
+                  textAlign: 'center'
+                }}>
+                  <button
+                    onClick={() => {
+                      setIsAlertsOpen(false);
+                      onNavigate('procurement');
+                    }}
+                    className="btn btn-secondary btn-xs"
+                    style={{ width: '100%', justifyContent: 'center', fontSize: '11.5px' }}
+                  >
+                    Open Procurement & AI Reorder Console →
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-        </button>
+        </div>
 
         {/* User Avatar & Profile Dropdown */}
         <div style={{ position: 'relative' }} ref={dropdownRef}>
