@@ -26,6 +26,7 @@ export default function StockTransfers() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [completingId, setCompletingId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
   const fetchTransfers = useCallback(async () => {
@@ -62,6 +63,28 @@ export default function StockTransfers() {
       setError(err.response?.data?.message || err.message || `Failed to complete transfer #${transferId}`);
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleCancelTransfer = async (transferId) => {
+    if (!window.confirm(`Are you sure you want to cancel Transfer #${transferId}? Any reserved stock allocations will be reverted.`)) {
+      return;
+    }
+    try {
+      setCancellingId(transferId);
+      setError(null);
+      setActionSuccess(null);
+      await stockTransferApi.cancelTransfer(transferId);
+      setActionSuccess(`Transfer #${transferId} cancelled successfully.`);
+      await fetchTransfers();
+      if (selectedTransfer && selectedTransfer.transferId === transferId) {
+        const updated = await stockTransferApi.getTransferById(transferId);
+        setSelectedTransfer(updated.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || `Failed to cancel transfer #${transferId}`);
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -358,14 +381,25 @@ export default function StockTransfers() {
                           <Eye size={12} /> Details
                         </button>
                         {canComplete && (
-                          <button
-                            onClick={() => handleCompleteTransfer(t.transferId)}
-                            disabled={completingId === t.transferId}
-                            className="btn btn-primary btn-xs"
-                            title="Complete and execute inventory transfer"
-                          >
-                            <Check size={12} /> {completingId === t.transferId ? 'Settling...' : 'Complete'}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleCompleteTransfer(t.transferId)}
+                              disabled={completingId === t.transferId || cancellingId === t.transferId}
+                              className="btn btn-primary btn-xs"
+                              title="Complete and execute inventory transfer"
+                            >
+                              <Check size={12} /> {completingId === t.transferId ? 'Settling...' : 'Complete'}
+                            </button>
+                            <button
+                              onClick={() => handleCancelTransfer(t.transferId)}
+                              disabled={completingId === t.transferId || cancellingId === t.transferId}
+                              className="btn btn-ghost btn-xs"
+                              style={{ color: 'var(--accent-coral)' }}
+                              title="Cancel stock transfer"
+                            >
+                              <X size={12} /> {cancellingId === t.transferId ? 'Cancelling...' : 'Cancel'}
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -475,13 +509,23 @@ export default function StockTransfers() {
               {(selectedTransfer.status?.toUpperCase() === 'DRAFT' ||
                 selectedTransfer.status?.toUpperCase() === 'PENDING' ||
                 selectedTransfer.status?.toUpperCase() === 'IN_TRANSIT') && (
-                <button
-                  onClick={() => handleCompleteTransfer(selectedTransfer.transferId)}
-                  disabled={completingId === selectedTransfer.transferId}
-                  className="btn btn-primary btn-sm"
-                >
-                  <Check size={13} /> {completingId === selectedTransfer.transferId ? 'Completing...' : 'Complete Transfer'}
-                </button>
+                <>
+                  <button
+                    onClick={() => handleCancelTransfer(selectedTransfer.transferId)}
+                    disabled={completingId === selectedTransfer.transferId || cancellingId === selectedTransfer.transferId}
+                    className="btn btn-ghost btn-sm"
+                    style={{ color: 'var(--accent-coral)' }}
+                  >
+                    <X size={13} /> {cancellingId === selectedTransfer.transferId ? 'Cancelling...' : 'Cancel Transfer'}
+                  </button>
+                  <button
+                    onClick={() => handleCompleteTransfer(selectedTransfer.transferId)}
+                    disabled={completingId === selectedTransfer.transferId || cancellingId === selectedTransfer.transferId}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <Check size={13} /> {completingId === selectedTransfer.transferId ? 'Completing...' : 'Complete Transfer'}
+                  </button>
+                </>
               )}
             </div>
           </div>

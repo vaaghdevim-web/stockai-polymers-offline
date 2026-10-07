@@ -17,6 +17,8 @@ public interface PalletRepository
 
     List<Pallet> findByStatus(String status);
 
+    List<Pallet> findByBin_BinId(Long binId);
+
     boolean existsByPalletCode(String palletCode);
 
     boolean existsByBarcode(String barcode);

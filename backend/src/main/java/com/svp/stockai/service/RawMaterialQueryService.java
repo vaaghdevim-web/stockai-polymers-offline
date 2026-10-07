@@ -1,5 +1,6 @@
 package com.svp.stockai.service;
 
+import com.svp.stockai.dto.CreateRawMaterialRequest;
 import com.svp.stockai.dto.RawMaterialResponse;
 import com.svp.stockai.entity.RawMaterial;
 import com.svp.stockai.repository.RawMaterialRepository;
@@ -109,6 +110,40 @@ public class RawMaterialQueryService {
 
         RawMaterial saved = rawMaterialRepository.save(material);
         return toResponse(saved);
+    }
+
+    @Transactional
+    public RawMaterialResponse updateRawMaterial(Long materialId, CreateRawMaterialRequest request) {
+        RawMaterial rm = rawMaterialRepository.findById(materialId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Raw Material not found with ID: " + materialId));
+
+        if (request.getMaterialName() != null && !request.getMaterialName().isBlank()) {
+            rm.setMaterialName(request.getMaterialName().trim());
+        }
+        if (request.getStandardCost() != null) {
+            rm.setStandardCost(request.getStandardCost());
+        }
+        if (request.getReorderLevel() != null) {
+            rm.setReorderLevel(request.getReorderLevel());
+        }
+        if (request.getSafetyStock() != null) {
+            rm.setSafetyStock(request.getSafetyStock());
+        }
+        if (request.getLeadTimeDays() != null) {
+            rm.setLeadTimeDays(request.getLeadTimeDays());
+        }
+        if (request.getCategoryId() != null) {
+            materialCategoryRepository.findById(request.getCategoryId())
+                    .ifPresent(rm::setCategory);
+        }
+        if (request.getDefaultUomId() != null) {
+            unitOfMeasureRepository.findById(request.getDefaultUomId())
+                    .ifPresent(rm::setDefaultUom);
+        }
+
+        RawMaterial updated = rawMaterialRepository.save(rm);
+        return toResponse(updated);
     }
 
     @Transactional

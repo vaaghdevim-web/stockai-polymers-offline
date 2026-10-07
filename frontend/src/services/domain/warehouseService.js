@@ -487,6 +487,14 @@ export const flattenHierarchyBins = (tree) => {
   return bins;
 };
 
+/**
+ * Searches exact physical storage location by Batch Number.
+ * Endpoint: GET /api/v1/warehouses/batch-location?batchNo={batchNo}
+ */
+export const searchBatchLocation = async (batchNo) => {
+  return warehouseApi.searchBatchLocation(batchNo);
+};
+
 export default {
   getWarehouses,
   getWarehouseById,
@@ -494,6 +502,7 @@ export default {
   enrichStorageTree,
   getBinsByWarehouseId,
   getBinOccupancy,
+  searchBatchLocation,
   createWarehouse,
   getPlants,
   getRacksByWarehouseId,

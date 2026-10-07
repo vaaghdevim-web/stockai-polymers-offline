@@ -21,6 +21,24 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     List<Inventory> findByFinishedBatch_Product_ProductId(Long productId);
 
+    @Query("SELECT COALESCE(SUM(i.quantityOnHand), 0) FROM Inventory i WHERE i.bin.binId = :binId")
+    BigDecimal getTotalStockInBin(@Param("binId") Long binId);
+
+    @Query("SELECT i FROM Inventory i WHERE i.bin.binId = :binId AND i.quantityOnHand > 0 ORDER BY i.updatedAt DESC")
+    List<Inventory> findActiveInventoryByBinId(@Param("binId") Long binId);
+
+    @Query("SELECT i FROM Inventory i WHERE i.materialBatch.batchNo = :batchNo AND i.quantityOnHand > 0 ORDER BY i.updatedAt DESC")
+    List<Inventory> findActiveInventoryByMaterialBatchNo(@Param("batchNo") String batchNo);
+
+    @Query("SELECT i FROM Inventory i WHERE i.finishedBatch.batchNo = :batchNo AND i.quantityOnHand > 0 ORDER BY i.updatedAt DESC")
+    List<Inventory> findActiveInventoryByFinishedBatchNo(@Param("batchNo") String batchNo);
+
+    @Query("SELECT i FROM Inventory i WHERE i.materialBatch.batchNo = :batchNo ORDER BY i.updatedAt DESC")
+    List<Inventory> findLatestInventoryByMaterialBatchNo(@Param("batchNo") String batchNo);
+
+    @Query("SELECT i FROM Inventory i WHERE i.finishedBatch.batchNo = :batchNo ORDER BY i.updatedAt DESC")
+    List<Inventory> findLatestInventoryByFinishedBatchNo(@Param("batchNo") String batchNo);
+
     @Query("SELECT COALESCE(SUM(i.quantityOnHand - i.reservedQty), 0) FROM Inventory i " +
            "WHERE i.materialBatch.material.materialId = :materialId")
     BigDecimal getTotalAvailableRawMaterial(@Param("materialId") Long materialId);

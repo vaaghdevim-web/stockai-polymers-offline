@@ -31,6 +31,16 @@ public class CompoundingBomController {
         return compoundingBomService.createBom(request, username);
     }
 
+    @PutMapping("/{bomId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPERVISOR')")
+    public CompoundingBomResponse update(
+            @PathVariable Long bomId,
+            @Valid @RequestBody CompoundingBomRequest request,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return compoundingBomService.updateBom(bomId, request, username);
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('OPERATOR', 'SUPERVISOR', 'ADMIN', 'MANAGER')")
     public List<CompoundingBomResponse> list(@RequestParam(required = false) String status) {

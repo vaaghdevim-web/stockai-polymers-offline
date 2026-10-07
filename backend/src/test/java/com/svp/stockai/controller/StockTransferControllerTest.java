@@ -99,4 +99,21 @@ class StockTransferControllerTest {
                 .andExpect(jsonPath("$.transferId").value(10))
                 .andExpect(jsonPath("$.status").value("Completed"));
     }
+
+    @Test
+    @DisplayName("PATCH /api/v1/transfers/{id}/cancel returns 200 OK")
+    void cancelTransfer_Returns200() throws Exception {
+        StockTransferResponse response = StockTransferResponse.builder()
+                .transferId(10L)
+                .transferNumber("TRF-20260908-ABC123")
+                .status("Cancelled")
+                .build();
+
+        when(stockTransferService.cancelTransfer(eq(10L), any())).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/transfers/10/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transferId").value(10))
+                .andExpect(jsonPath("$.status").value("Cancelled"));
+    }
 }

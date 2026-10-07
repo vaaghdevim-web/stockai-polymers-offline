@@ -120,14 +120,14 @@ SELECT r.rack_id, 'SHELF-U1-01', TRUE FROM location_rack r WHERE r.rack_code = '
 INSERT INTO location_shelf (rack_id, shelf_code, is_active)
 SELECT r.rack_id, 'SHELF-U1-02', TRUE FROM location_rack r WHERE r.rack_code = 'RACK-U1-01';
 
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U1-01', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-01';
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U1-02', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-01';
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U1-03', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-02';
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U1-04', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-02';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U1-01', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-01';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U1-02', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-01';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U1-03', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-02';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U1-04', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U1-02';
 
 -- FG Warehouse Bins
 INSERT INTO location_rack (warehouse_id, rack_code, is_active)
@@ -140,12 +140,12 @@ SELECT r.rack_id, 'SHELF-U3-01', TRUE FROM location_rack r WHERE r.rack_code = '
 INSERT INTO location_shelf (rack_id, shelf_code, is_active)
 SELECT r.rack_id, 'SHELF-U3-02', TRUE FROM location_rack r WHERE r.rack_code = 'RACK-U3-02';
 
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U3-01', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-01';
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U3-02', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-01';
-INSERT INTO location_bin (shelf_id, bin_code, is_active)
-SELECT s.shelf_id, 'BIN-U3-03', TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-02';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U3-01', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-01';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U3-02', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-01';
+INSERT INTO location_bin (shelf_id, bin_code, capacity_kg, is_active)
+SELECT s.shelf_id, 'BIN-U3-03', 5000.0000, TRUE FROM location_shelf s WHERE s.shelf_code = 'SHELF-U3-02';
 
 -- 7. App Roles
 INSERT INTO app_role (role_name, is_active) VALUES ('ADMIN', TRUE);

@@ -5,8 +5,11 @@ import com.svp.stockai.dto.RawMaterialReceiptResponse;
 import com.svp.stockai.entity.Inventory;
 import com.svp.stockai.entity.InventoryTransaction;
 import com.svp.stockai.entity.LocationBin;
+import com.svp.stockai.entity.LocationRack;
+import com.svp.stockai.entity.LocationShelf;
 import com.svp.stockai.entity.MaterialBatch;
 import com.svp.stockai.entity.RawMaterial;
+import com.svp.stockai.entity.Warehouse;
 import com.svp.stockai.repository.InventoryRepository;
 import com.svp.stockai.repository.InventoryTransactionRepository;
 import com.svp.stockai.repository.LocationBinRepository;
@@ -23,10 +26,24 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class RawMaterialReceiptServiceTest {
+
+    private LocationBin validBin() {
+        Warehouse wh = Warehouse.builder().warehouseId(1L).warehouseName("WH-01").isActive(true).build();
+        LocationRack rack = LocationRack.builder().rackId(1L).rackCode("R-01").warehouse(wh).isActive(true).build();
+        LocationShelf shelf = LocationShelf.builder().shelfId(1L).shelfCode("S-01").rack(rack).isActive(true).build();
+        return LocationBin.builder()
+                .binId(2L)
+                .binCode("BIN-U1-01")
+                .shelf(shelf)
+                .capacityKg(new BigDecimal("5000.0000"))
+                .isActive(true)
+                .build();
+    }
 
     @Test
     void receiptCreatesBatchInventoryAndAppendOnlyTransaction() {
@@ -40,7 +57,8 @@ class RawMaterialReceiptServiceTest {
         RawMaterialReceiptService service = new RawMaterialReceiptService(materials, suppliers, bins, batches, fifo, inventory, transactions);
         RawMaterial material = RawMaterial.builder().materialId(1L).build();
         when(materials.findById(1L)).thenReturn(Optional.of(material));
-        when(bins.findById(2L)).thenReturn(Optional.of(LocationBin.builder().binId(2L).build()));
+        when(bins.findByIdWithLock(2L)).thenReturn(Optional.of(validBin()));
+        when(inventory.getTotalStockInBin(2L)).thenReturn(BigDecimal.ZERO);
         when(batches.saveAndFlush(any(MaterialBatch.class))).thenAnswer(call -> {
             MaterialBatch batch = call.getArgument(0); batch.setBatchId(3L); return batch;
         });
@@ -77,11 +95,13 @@ class RawMaterialReceiptServiceTest {
         MaterialBatchRepository batches = mock(MaterialBatchRepository.class);
         RawMaterialRepository materials = mock(RawMaterialRepository.class);
         LocationBinRepository bins = mock(LocationBinRepository.class);
+        InventoryRepository inventory = mock(InventoryRepository.class);
         when(materials.findById(1L)).thenReturn(Optional.of(RawMaterial.builder().materialId(1L).build()));
-        when(bins.findById(2L)).thenReturn(Optional.of(LocationBin.builder().binId(2L).build()));
+        when(bins.findByIdWithLock(2L)).thenReturn(Optional.of(validBin()));
+        when(inventory.getTotalStockInBin(2L)).thenReturn(BigDecimal.ZERO);
         when(batches.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
         RawMaterialReceiptService service = new RawMaterialReceiptService(materials, mock(SupplierRepository.class), bins,
-                batches, mock(MaterialBatchService.class), mock(InventoryRepository.class), mock(InventoryTransactionRepository.class));
+                batches, mock(MaterialBatchService.class), inventory, mock(InventoryTransactionRepository.class));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.receive(request()));
 
@@ -112,7 +132,8 @@ class RawMaterialReceiptServiceTest {
         InventoryRepository inventory = mock(InventoryRepository.class);
         InventoryTransactionRepository transactions = mock(InventoryTransactionRepository.class);
         when(materials.findById(1L)).thenReturn(Optional.of(RawMaterial.builder().materialId(1L).build()));
-        when(bins.findById(2L)).thenReturn(Optional.of(LocationBin.builder().binId(2L).build()));
+        when(bins.findByIdWithLock(2L)).thenReturn(Optional.of(validBin()));
+        when(inventory.getTotalStockInBin(2L)).thenReturn(BigDecimal.ZERO);
         when(batches.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
         when(inventory.save(any())).thenAnswer(call -> call.getArgument(0));
         when(transactions.save(any())).thenThrow(new DataIntegrityViolationException("transaction failure"));
@@ -121,6 +142,78 @@ class RawMaterialReceiptServiceTest {
 
         assertThrows(DataIntegrityViolationException.class, () -> service.receive(request()));
         verify(transactions).save(any(InventoryTransaction.class));
+    }
+
+    @Test
+    void intakeExceedingBinCapacityIsRejected() {
+        RawMaterialRepository materials = mock(RawMaterialRepository.class);
+        LocationBinRepository bins = mock(LocationBinRepository.class);
+        MaterialBatchRepository batches = mock(MaterialBatchRepository.class);
+        InventoryRepository inventory = mock(InventoryRepository.class);
+        InventoryTransactionRepository transactions = mock(InventoryTransactionRepository.class);
+
+        // Bin capacity = 5000, current occupied = 4000, incoming = 2000 => total 6000 > 5000 => REJECT
+        when(materials.findById(1L)).thenReturn(Optional.of(RawMaterial.builder().materialId(1L).build()));
+        when(bins.findByIdWithLock(2L)).thenReturn(Optional.of(validBin()));
+        when(inventory.getTotalStockInBin(2L)).thenReturn(new BigDecimal("4000.0000"));
+
+        RawMaterialReceiptService service = new RawMaterialReceiptService(materials, mock(SupplierRepository.class), bins,
+                batches, mock(MaterialBatchService.class), inventory, transactions);
+
+        RawMaterialReceiptRequest largeRequest = new RawMaterialReceiptRequest(1L, null, 2L, "B-001", "LOT-001", null,
+                new BigDecimal("2000.0000"), new BigDecimal("100.0000"), null, "Available");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> service.receive(largeRequest));
+        assertEquals(400, ex.getStatusCode().value());
+        assertTrue(ex.getReason().contains("Bin capacity exceeded"));
+    }
+
+    @Test
+    void intakeFittingWithinRemainingCapacitySucceeds() {
+        RawMaterialRepository materials = mock(RawMaterialRepository.class);
+        LocationBinRepository bins = mock(LocationBinRepository.class);
+        MaterialBatchRepository batches = mock(MaterialBatchRepository.class);
+        InventoryRepository inventory = mock(InventoryRepository.class);
+        InventoryTransactionRepository transactions = mock(InventoryTransactionRepository.class);
+
+        // Bin capacity = 5000, current occupied = 4000, incoming = 1000 => total 5000 <= 5000 => PASS
+        when(materials.findById(1L)).thenReturn(Optional.of(RawMaterial.builder().materialId(1L).build()));
+        when(bins.findByIdWithLock(2L)).thenReturn(Optional.of(validBin()));
+        when(inventory.getTotalStockInBin(2L)).thenReturn(new BigDecimal("4000.0000"));
+        when(batches.saveAndFlush(any(MaterialBatch.class))).thenAnswer(call -> {
+            MaterialBatch batch = call.getArgument(0); batch.setBatchId(100L); return batch;
+        });
+        when(inventory.save(any(Inventory.class))).thenAnswer(call -> {
+            Inventory item = call.getArgument(0); item.setInventoryId(200L); return item;
+        });
+        when(transactions.save(any(InventoryTransaction.class))).thenAnswer(call -> {
+            InventoryTransaction item = call.getArgument(0); item.setTransactionId(300L); return item;
+        });
+
+        RawMaterialReceiptService service = new RawMaterialReceiptService(materials, mock(SupplierRepository.class), bins,
+                batches, mock(MaterialBatchService.class), inventory, transactions);
+
+        RawMaterialReceiptRequest fitRequest = new RawMaterialReceiptRequest(1L, null, 2L, "B-001", "LOT-001", null,
+                new BigDecimal("1000.0000"), new BigDecimal("100.0000"), null, "Available");
+
+        RawMaterialReceiptResponse response = service.receive(fitRequest);
+        assertEquals(100L, response.batchId());
+        assertEquals(200L, response.inventoryId());
+    }
+
+    @Test
+    void zeroOrNegativeQuantityIsRejected() {
+        RawMaterialReceiptService service = serviceWith(mock(MaterialBatchRepository.class));
+
+        RawMaterialReceiptRequest zeroReq = new RawMaterialReceiptRequest(1L, null, 2L, "B-001", "LOT-001", null,
+                BigDecimal.ZERO, new BigDecimal("100.0000"), null, "Available");
+        ResponseStatusException exZero = assertThrows(ResponseStatusException.class, () -> service.receive(zeroReq));
+        assertEquals(400, exZero.getStatusCode().value());
+
+        RawMaterialReceiptRequest negReq = new RawMaterialReceiptRequest(1L, null, 2L, "B-001", "LOT-001", null,
+                new BigDecimal("-50.0000"), new BigDecimal("100.0000"), null, "Available");
+        ResponseStatusException exNeg = assertThrows(ResponseStatusException.class, () -> service.receive(negReq));
+        assertEquals(400, exNeg.getStatusCode().value());
     }
 
     private RawMaterialReceiptService serviceWith(MaterialBatchRepository batches) {

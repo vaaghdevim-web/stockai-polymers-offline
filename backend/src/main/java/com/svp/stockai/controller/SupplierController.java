@@ -49,6 +49,7 @@ public class SupplierController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
+    @PreAuthorize("hasAnyRole('PURCHASE_MANAGER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'PLANT_MANAGER')")
     public SupplierResponse createSupplier(@Valid @RequestBody CreateSupplierRequest request) {
         if (request.getGstNo() != null && !request.getGstNo().isBlank()) {
             if (supplierRepository.findByGstNo(request.getGstNo().trim()).isPresent()) {
@@ -71,6 +72,7 @@ public class SupplierController {
 
     @PutMapping("/{id}")
     @Transactional
+    @PreAuthorize("hasAnyRole('PURCHASE_MANAGER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'PLANT_MANAGER')")
     public SupplierResponse updateSupplier(@PathVariable Long id, @Valid @RequestBody CreateSupplierRequest request) {
         Supplier s = supplierRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Supplier not found with ID: " + id));
@@ -100,6 +102,7 @@ public class SupplierController {
 
     @PatchMapping("/{id}/toggle-status")
     @Transactional
+    @PreAuthorize("hasAnyRole('PURCHASE_MANAGER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'PLANT_MANAGER')")
     public SupplierResponse toggleSupplierStatus(@PathVariable Long id) {
         Supplier s = supplierRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Supplier not found with ID: " + id));
@@ -111,6 +114,7 @@ public class SupplierController {
 
     @DeleteMapping("/{id}")
     @Transactional
+    @PreAuthorize("hasAnyRole('PURCHASE_MANAGER', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteSupplier(
             @PathVariable Long id,
             @RequestParam(defaultValue = "false") boolean permanent) {

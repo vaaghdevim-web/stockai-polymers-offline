@@ -49,4 +49,13 @@ public class PurchaseOrderController {
         String username = authentication != null ? authentication.getName() : null;
         return purchaseOrderService.approvePurchaseOrder(id, username);
     }
+
+    @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyRole('PURCHASE_MANAGER', 'SUPERVISOR', 'ADMIN', 'MANAGER', 'PLANT_MANAGER')")
+    public PurchaseOrderResponse cancelPurchaseOrder(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : null;
+        return purchaseOrderService.cancelPurchaseOrder(id, username);
+    }
 }

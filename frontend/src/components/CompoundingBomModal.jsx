@@ -23,6 +23,7 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [editingBomId, setEditingBomId] = useState(null);
 
   // New BOM Form State
   const [newBom, setNewBom] = useState({
@@ -36,6 +37,41 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
       { materialId: '', percentage: '5.0', isRequired: true }
     ]
   });
+
+  const handleStartEdit = (bom) => {
+    setEditingBomId(bom.compoundingBomId);
+    setNewBom({
+      bomCode: bom.bomCode || '',
+      version: bom.version || 'v1.0',
+      targetBatchWeightKg: String(bom.targetBatchWeightKg || 500),
+      effectiveFrom: bom.effectiveFrom || new Date().toISOString().slice(0, 10),
+      items: (bom.items && bom.items.length > 0)
+        ? bom.items.map(it => ({
+            materialId: it.materialId,
+            percentage: String(it.percentage),
+            isRequired: it.isRequired !== false
+          }))
+        : [{ materialId: '', percentage: '100.0', isRequired: true }]
+    });
+    setError(null);
+    setSuccessMsg(null);
+    setActiveTab('create');
+  };
+
+  const handleResetForm = () => {
+    setEditingBomId(null);
+    setNewBom({
+      bomCode: '',
+      version: 'v1.0',
+      targetBatchWeightKg: '500',
+      effectiveFrom: new Date().toISOString().slice(0, 10),
+      items: [
+        { materialId: '', percentage: '85.0', isRequired: true },
+        { materialId: '', percentage: '10.0', isRequired: true },
+        { materialId: '', percentage: '5.0', isRequired: true }
+      ]
+    });
+  };
 
   // Batch Calculator State
   const [calcBomId, setCalcBomId] = useState('');
@@ -149,24 +185,19 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
         items: Array.from(aggregatedMap.values())
       };
 
-      await productionApi.createBOM(payload);
-      setSuccessMsg(`Compounding BOM recipe '${newBom.bomCode}' created successfully!`);
+      if (editingBomId) {
+        await productionApi.updateBOM(editingBomId, payload);
+        setSuccessMsg(`Compounding BOM recipe '${newBom.bomCode}' updated successfully!`);
+      } else {
+        await productionApi.createBOM(payload);
+        setSuccessMsg(`Compounding BOM recipe '${newBom.bomCode}' created successfully!`);
+      }
       loadBoms();
       if (onBomsUpdated) onBomsUpdated();
       setActiveTab('list');
-      setNewBom({
-        bomCode: '',
-        version: 'v1.0',
-        targetBatchWeightKg: '500',
-        effectiveFrom: new Date().toISOString().slice(0, 10),
-        items: [
-          { materialId: '', percentage: '85.0', isRequired: true },
-          { materialId: '', percentage: '10.0', isRequired: true },
-          { materialId: '', percentage: '5.0', isRequired: true }
-        ]
-      });
+      handleResetForm();
     } catch (err) {
-      console.error('Failed to create BOM:', err);
+      console.error('Failed to save BOM:', err);
       setError(err?.response?.data?.message || err?.message || 'Failed to save compounding recipe.');
     } finally {
       setLoading(false);
@@ -312,7 +343,12 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
           </button>
 
           <button
-            onClick={() => { setActiveTab('create'); setError(null); setSuccessMsg(null); }}
+            onClick={() => { 
+              if (activeTab !== 'create') handleResetForm();
+              setActiveTab('create'); 
+              setError(null); 
+              setSuccessMsg(null); 
+            }}
             style={{
               padding: '12px 16px',
               background: 'transparent',
@@ -328,7 +364,7 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
             }}
           >
             <Plus size={15} />
-            <span>+ New Recipe</span>
+            <span>{editingBomId ? 'Edit Recipe' : '+ New Recipe'}</span>
           </button>
 
           <button
@@ -447,6 +483,15 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
                         style={{ flex: 1, fontSize: '11.5px', justifyContent: 'center' }}
                       >
                         <Calculator size={12} style={{ marginRight: '4px' }} /> Calculate
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(bom)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: '11.5px', justifyContent: 'center' }}
+                      >
+                        Edit
                       </button>
 
                       <button
@@ -663,7 +708,7 @@ export default function CompoundingBomModal({ isOpen, onClose, onBomsUpdated }) 
                   style={{ background: '#8B5CF6', borderColor: '#8B5CF6' }}
                 >
                   <Sparkles size={14} />
-                  <span>{loading ? 'Saving Recipe...' : 'Save Compounding Recipe'}</span>
+                  <span>{loading ? 'Saving Recipe...' : (editingBomId ? 'Update Compounding Recipe' : 'Save Compounding Recipe')}</span>
                 </button>
               </div>
             </form>

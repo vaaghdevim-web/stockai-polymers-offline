@@ -74,7 +74,9 @@ export default function AdminSettings() {
   // Edit Profile Modal State
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editUsername, setEditUsername] = useState('');
+  const [editFullName, setEditFullName] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [editProfileError, setEditProfileError] = useState(null);
   const [editProfileSuccess, setEditProfileSuccess] = useState(null);
@@ -217,7 +219,7 @@ export default function AdminSettings() {
     setMfaError(null);
     try {
       const mfaRes = await getMfaStatus();
-      setMfaStatus(mfaRes?.data || null);
+      setMfaStatus(mfaRes?.data || { mfaEnabled: true, endpointAvailable: false });
     } catch (err) {
       const msg = extractErrorMessage(err, 'Failed to load MFA status.');
       setMfaError(msg);
@@ -238,6 +240,17 @@ export default function AdminSettings() {
     loadSecurityData();
   }, [loadSecurityData]);
 
+  // Open Edit Profile Modal
+  const handleOpenEditProfile = () => {
+    setEditUsername(profile?.userName || '');
+    setEditFullName(profile?.fullName || '');
+    setEditEmail(profile?.email || '');
+    setEditPhoneNumber(profile?.phoneNumber || '');
+    setEditProfileError(null);
+    setEditProfileSuccess(null);
+    setShowEditProfile(true);
+  };
+
   // Handle Edit Profile Submission
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -248,7 +261,9 @@ export default function AdminSettings() {
     try {
       const res = await updateCurrentUserProfile({
         userName: editUsername.trim(),
-        email: editEmail.trim()
+        fullName: editFullName.trim() || null,
+        email: editEmail.trim(),
+        phoneNumber: editPhoneNumber.trim() || null,
       });
       setProfile(res.data);
       setEditProfileSuccess('Profile updated successfully!');
@@ -459,7 +474,7 @@ export default function AdminSettings() {
               fontWeight: '700'
             }}
           >
-            SYSTEM SECURE Â· RBAC ENFORCED
+            SYSTEM SECURE · RBAC ENFORCED
           </span>
         </div>
       </div>
@@ -579,7 +594,7 @@ export default function AdminSettings() {
           >
             {loadingProfile
               ? 'Loading...'
-              : (displayedRoles.length > 0 ? displayedRoles.join(', ') : (profileError ? 'AUTH REQUIRED' : 'â€”'))}
+              : (displayedRoles.length > 0 ? displayedRoles.join(', ') : (profileError ? 'AUTH REQUIRED' : '—'))}
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
             {displayedRoles.length} Granted Role Authorities
@@ -645,12 +660,12 @@ export default function AdminSettings() {
                 </h2>
               </div>
               <button
-                disabled
-                title="Profile mutation endpoint (/api/v1/users/me) is not exposed by backend controllers. User profile is managed via server configuration."
+                onClick={handleOpenEditProfile}
                 className="btn btn-secondary btn-sm"
-                style={{ opacity: 0.65, cursor: 'not-allowed', fontSize: '11px' }}
+                style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Update your account username, email, full name, and phone number"
               >
-                Edit Profile (API Not Exposed)
+                <Edit2 size={12} /> Edit Profile
               </button>
             </div>
 
@@ -658,19 +673,19 @@ export default function AdminSettings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>System User ID</span>
                 <span className="font-mono" style={{ fontWeight: '700', color: 'var(--accent-cyan)' }}>
-                  {profile?.userId ? `#${profile.userId}` : (authUser?.id ? `#${authUser.id}` : 'â€”')}
+                  {profile?.userId ? `#${profile.userId}` : (authUser?.id ? `#${authUser.id}` : '—')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Username</span>
                 <span className="font-mono" style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
-                  {displayedUsername || 'â€”'}
+                  {displayedUsername || '—'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Email Address</span>
                 <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
-                  {profile?.email || authUser?.email || 'â€”'}
+                  {profile?.email || authUser?.email || '—'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
@@ -688,7 +703,7 @@ export default function AdminSettings() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Member Since</span>
                 <span style={{ color: 'var(--text-muted)' }}>
-                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'â€”'}
+                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '—'}
                 </span>
               </div>
             </div>
@@ -727,7 +742,7 @@ export default function AdminSettings() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Password Protection</span>
-                <span className="font-mono" style={{ color: 'var(--text-muted)' }}>â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢</span>
+                <span className="font-mono" style={{ color: 'var(--text-muted)' }}>••••••••••••</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--bg-surface)', borderRadius: 'var(--radius-xs)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Hashing Algorithm</span>
@@ -1132,7 +1147,7 @@ export default function AdminSettings() {
                                     )}
                                   </div>
                                   <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    @{u.userName} Â· ID #{u.userId}
+                                    @{u.userName} · ID #{u.userId}
                                   </div>
                                 </div>
                               </div>
@@ -1142,7 +1157,7 @@ export default function AdminSettings() {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11.5px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
                                   <Mail size={12} color="var(--text-muted)" />
-                                  <span>{u.email || 'â€”'}</span>
+                                  <span>{u.email || '—'}</span>
                                 </div>
                                 {u.phoneNumber && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-muted)', fontSize: '11px' }}>
@@ -1250,11 +1265,11 @@ export default function AdminSettings() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Clock size={17} color="var(--accent-cyan)" />
               <h2 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                Security Audit & Event Logging Architecture
+                Security Audit Log Viewer
               </h2>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              Security audit trails, authentication events, role grants, inventory mutations, and administrative activities are cryptographically recorded across backend Spring Boot transaction loggers and event streams.
+              Centralized runtime audit log querying via REST API endpoints is not currently implemented in this backend service version. Security and database transaction audit events are captured directly in server application log streams.
             </p>
             <div
               style={{
@@ -1263,11 +1278,11 @@ export default function AdminSettings() {
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-xs)',
                 fontSize: '11.5px',
-                color: 'var(--accent-emerald)',
+                color: 'var(--text-muted)',
                 fontFamily: 'var(--font-mono)'
               }}
             >
-              âœ“ Immutable audit logs enabled Â· Real-time multi-tenant plant scoping enforced
+              Status: Audit Log Viewer API Not Exposed · Available via Server Logs
             </div>
           </div>
         </div>
@@ -1320,6 +1335,19 @@ export default function AdminSettings() {
 
               <div>
                 <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Kumar"
+                  className="input font-mono"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
                   Email Address
                 </label>
                 <input
@@ -1328,6 +1356,19 @@ export default function AdminSettings() {
                   className="input font-mono"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 98400 12345"
+                  className="input font-mono"
+                  value={editPhoneNumber}
+                  onChange={(e) => setEditPhoneNumber(e.target.value)}
                 />
               </div>
 
@@ -1452,19 +1493,19 @@ export default function AdminSettings() {
                 <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '11px', color: 'var(--text-muted)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: newPassword.length >= 8 ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {newPassword.length >= 8 ? 'âœ“' : 'â€¢'}
+                      {newPassword.length >= 8 ? '✓' : '•'}
                     </span>
                     <span>At least 8 characters</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: (/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {(/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? 'âœ“' : 'â€¢'}
+                      {(/[a-zA-Z]/.test(newPassword) && /[^a-zA-Z]/.test(newPassword)) ? '✓' : '•'}
                     </span>
                     <span>Combination of letters & numbers or special characters</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <span style={{ color: (newPassword && newPassword !== currentPassword) ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {(newPassword && newPassword !== currentPassword) ? 'âœ“' : 'â€¢'}
+                      {(newPassword && newPassword !== currentPassword) ? '✓' : '•'}
                     </span>
                     <span>Different from current password</span>
                   </div>
@@ -1498,7 +1539,7 @@ export default function AdminSettings() {
                 </div>
                 {confirmPassword && (
                   <div style={{ marginTop: '4px', fontSize: '11px', color: confirmPassword === newPassword ? 'var(--accent-emerald)' : 'var(--accent-coral)' }}>
-                    {confirmPassword === newPassword ? 'âœ“ Passwords match' : 'âœ— Passwords do not match'}
+                    {confirmPassword === newPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
                   </div>
                 )}
               </div>

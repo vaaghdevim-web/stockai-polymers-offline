@@ -160,6 +160,33 @@ public class PurchaseOrderService {
         return mapToResponse(saved, items);
     }
 
+    @Transactional
+    public PurchaseOrderResponse cancelPurchaseOrder(Long id, String username) {
+        PurchaseOrder po = purchaseOrderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Purchase order not found with ID: " + id));
+
+        String currentStatus = po.getStatus() != null ? po.getStatus().trim() : "";
+        if ("CANCELLED".equalsIgnoreCase(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Purchase order is already cancelled.");
+        }
+        if ("RECEIVED".equalsIgnoreCase(currentStatus) || "FULFILLED".equalsIgnoreCase(currentStatus) || "COMPLETED".equalsIgnoreCase(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel a purchase order with status: " + currentStatus);
+        }
+
+        AppUser user = null;
+        if (username != null && !username.isBlank()) {
+            user = appUserRepository.findByUserName(username).orElse(null);
+        }
+
+        po.setStatus("Cancelled");
+        po.setUpdatedBy(user);
+        PurchaseOrder saved = purchaseOrderRepository.save(po);
+
+        List<PurchaseOrderItemResponse> items = purchaseOrderItemRepository.findByPurchaseOrder_PoId(saved.getPoId())
+                .stream().map(this::mapItemToResponse).toList();
+        return mapToResponse(saved, items);
+    }
+
     private PurchaseOrderResponse mapToResponse(PurchaseOrder po, List<PurchaseOrderItemResponse> items) {
         return PurchaseOrderResponse.builder()
                 .poId(po.getPoId())

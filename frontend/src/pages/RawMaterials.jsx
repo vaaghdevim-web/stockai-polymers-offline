@@ -21,7 +21,8 @@ import {
   ArrowUpRight,
   GitBranch,
   Printer,
-  Trash2
+  Trash2,
+  Edit3
 } from 'lucide-react';
 import { inventoryApi } from '../services/api';
 import {
@@ -54,6 +55,7 @@ export default function RawMaterials({ onNavigate }) {
 
   const [showInwardModal, setShowInwardModal] = useState(false);
   const [showDefineMaterialModal, setShowDefineMaterialModal] = useState(false);
+  const [materialToEdit, setMaterialToEdit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -227,8 +229,8 @@ export default function RawMaterials({ onNavigate }) {
   // Dynamic Category Distribution calculation from active materials
   const totalStockKg = materials.reduce((acc, m) => acc + Number(m.currentStock || 0), 0);
   const totalValueCr = materials.length > 0 
-    ? (materials.reduce((acc, m) => acc + (Number(m.currentStock || 0) * (Number(m.unitCost || 112.5))), 0) / 10000000).toFixed(2)
-    : '4.86';
+    ? (materials.reduce((acc, m) => acc + (Number(m.currentStock || 0) * (Number(m.standardCost || m.unitCost || 112.5))), 0) / 10000000).toFixed(2)
+    : '0.00';
 
   const categoryColors = ['#0284C7', '#06B6D4', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
   const categoryGroups = {};
@@ -240,16 +242,10 @@ export default function RawMaterials({ onNavigate }) {
   const categorySummary = Object.keys(categoryGroups).length > 0
     ? Object.keys(categoryGroups).map((cat, idx) => ({
         label: cat,
-        value: totalStockKg > 0 ? Math.round((categoryGroups[cat] / totalStockKg) * 100) : 20,
+        value: totalStockKg > 0 ? Math.round((categoryGroups[cat] / totalStockKg) * 100) : 0,
         color: categoryColors[idx % categoryColors.length]
       }))
-    : [
-        { label: 'PP', value: 45, color: '#0284C7' },
-        { label: 'Masterbatch', value: 25, color: '#06B6D4' },
-        { label: 'Additives', value: 15, color: '#F59E0B' },
-        { label: 'Filler', value: 10, color: '#10B981' },
-        { label: 'Ink', value: 5, color: '#8B5CF6' }
-      ];
+    : [];
 
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1600px', margin: '0 auto' }}>
@@ -589,6 +585,30 @@ export default function RawMaterials({ onNavigate }) {
                                 <Layers size={13} color="#0284C7" /> View Batches
                               </button>
                               <button
+                                onClick={() => {
+                                  setActionMenuOpenId(null);
+                                  setMaterialToEdit(item);
+                                  setShowDefineMaterialModal(true);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  fontSize: '12px',
+                                  background: 'transparent',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#0284C7'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#F0F9FF'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Edit3 size={13} color="#0284C7" /> Edit Material SKU
+                              </button>
+                              <button
                                 onClick={() => handleOpenReorder(item)}
                                 style={{
                                   width: '100%',
@@ -841,11 +861,15 @@ export default function RawMaterials({ onNavigate }) {
             rawMaterials={materials}
           />
 
-          {/* Define New Raw Material SKU Modal */}
+          {/* Define / Edit Raw Material SKU Modal */}
           <CreateRawMaterialModal
             isOpen={showDefineMaterialModal}
-            onClose={() => setShowDefineMaterialModal(false)}
+            onClose={() => {
+              setShowDefineMaterialModal(false);
+              setMaterialToEdit(null);
+            }}
             onMaterialCreated={fetchMaterials}
+            material={materialToEdit}
           />
 
           {/* FIFO Material Batches Modal */}

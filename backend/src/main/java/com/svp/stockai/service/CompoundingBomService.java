@@ -104,6 +104,79 @@ public class CompoundingBomService {
     }
 
     @Transactional
+    public CompoundingBomResponse updateBom(Long bomId, CompoundingBomRequest request, String currentUsername) {
+        CompoundingBom bom = compoundingBomRepository.findById(bomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Compounding BOM not found with ID: " + bomId));
+
+        // 1. Uniqueness check for (bomCode, version) excluding current BOM
+        compoundingBomRepository.findByBomCodeAndVersion(request.getBomCode(), request.getVersion())
+                .ifPresent(existing -> {
+                    if (!existing.getCompoundingBomId().equals(bomId)) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "Compounding BOM with code '" + request.getBomCode() + "' and version '" + request.getVersion() + "' already exists");
+                    }
+                });
+
+        // 2. Date consistency check
+        if (request.getEffectiveFrom() != null && request.getEffectiveTo() != null) {
+            if (request.getEffectiveTo().isBefore(request.getEffectiveFrom())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "effectiveTo cannot be before effectiveFrom");
+            }
+        }
+
+        // 3. Formula Percentage Total Invariant (Must equal 100%)
+        BigDecimal totalPercentage = BigDecimal.ZERO;
+        for (CompoundingBomItemRequest itemReq : request.getItems()) {
+            if (itemReq.getPercentage() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Percentage is required for all recipe items");
+            }
+            totalPercentage = totalPercentage.add(itemReq.getPercentage());
+        }
+
+        if (totalPercentage.subtract(HUNDRED).abs().compareTo(TOLERANCE) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Total recipe percentage must equal 100.0000%. Current sum: " + totalPercentage + "%");
+        }
+
+        // 4. Update Header fields
+        bom.setBomCode(request.getBomCode());
+        bom.setVersion(request.getVersion());
+        bom.setEffectiveFrom(request.getEffectiveFrom());
+        bom.setEffectiveTo(request.getEffectiveTo());
+        bom.setTargetBatchWeightKg(request.getTargetBatchWeightKg());
+
+        CompoundingBom savedBom = compoundingBomRepository.save(bom);
+
+        // 5. Replace items
+        List<CompoundingBomItem> currentItems = compoundingBomItemRepository.findByCompoundingBom_CompoundingBomId(bomId);
+        compoundingBomItemRepository.deleteAll(currentItems);
+
+        List<CompoundingBomItem> savedItems = new ArrayList<>();
+        for (CompoundingBomItemRequest itemReq : request.getItems()) {
+            RawMaterial material = rawMaterialRepository.findById(itemReq.getMaterialId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Raw material not found with ID: " + itemReq.getMaterialId()));
+
+            BigDecimal targetKg = request.getTargetBatchWeightKg()
+                    .multiply(itemReq.getPercentage())
+                    .divide(HUNDRED, 4, RoundingMode.HALF_UP);
+
+            CompoundingBomItem item = CompoundingBomItem.builder()
+                    .compoundingBom(savedBom)
+                    .material(material)
+                    .percentage(itemReq.getPercentage())
+                    .targetQuantityKg(targetKg)
+                    .isRequired(itemReq.getIsRequired() != null ? itemReq.getIsRequired() : true)
+                    .build();
+
+            savedItems.add(compoundingBomItemRepository.save(item));
+        }
+
+        return mapToResponse(savedBom, savedItems);
+    }
+
+    @Transactional
     public CompoundingBomResponse activateBom(Long bomId) {
         CompoundingBom bom = compoundingBomRepository.findById(bomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Compounding BOM not found with ID: " + bomId));
